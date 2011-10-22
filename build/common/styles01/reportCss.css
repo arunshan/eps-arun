@@ -1,0 +1,87 @@
+body, table, td, p, br, ul, li, a
+{
+  font-family:arial, helvetica, sans-serif;
+  font-size: 9px;
+}
+
+h1
+{
+  font-size: 15px;
+  margin:0 1px;
+}
+body
+{
+  color:#000;
+  background-color:#eee;
+  margin:0 1px;
+  font-style:normal;
+}
+table
+{
+  border-width: 1px;
+  border-spacing:	2px;
+  border-style:	solid;
+  border-color:	blue;
+  background-color:	white;
+  vertical-align: top;
+  text-align: center;
+}
+th
+{
+  text-align: center;
+  background-color: skyblue;
+  font-size: 12px;
+  padding: 0px 5px 1px 5px;
+}
+td
+{
+  text-align: right;
+  background-color: #EEE;
+  font-size: 9px;
+  padding: 0px 5px 1px 5px;
+}
+
+.left_normal /* Left, Normal */
+{
+  text-align: left;
+  font-weight: normal;
+}
+.center_normal /* Center, Normal */
+{
+  text-align: center;
+  font-weight: normal;
+}
+
+.left_bold /* Left, Bold */
+{
+  text-align: left;
+  font-weight: bold;
+}
+
+.right_bold /* Right, Bold */
+{
+  text-align: right;
+  font-weight: bold;
+}
+.center_bold /* Center, Bold */
+{
+  text-align: center;
+  font-weight: bold;
+}
+.small8 /* Small 8px */
+{
+  font-size: 8px;
+}
+.small7 /* Small 7px */
+{
+  font-size: 7px;
+}
+.large11 /* Large 11px */
+{
+  font-size: 11px;
+}
+.largered14 /* Large, Red 14px */
+{
+  color: red;
+  font-size: 14px;
+}

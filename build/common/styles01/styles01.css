@@ -1,0 +1,32 @@
+      *
+      {
+        font-family:arial, helvetica, sans-serif;
+      }
+      body {color:#000;background-color:#fff;margin:0 1px;font-style:normal;}
+      div#navigationbar {line-height:0;height:0} /* short hand with auto/inherit doesn't work */
+      td#tdbody {color: #333; font-size: 12pt; padding:5px;}
+      /* Level A Styles---------------------------------------------*/
+      #menu {width:100%;margin:0 0 -2px 0;padding:0;border-bottom:1px solid #dddece;line-height:normal;}
+      #menu1Wrap {float:left;width:100%;background:url(/common/styles01/images/levelA_bkg.gif) bottom repeat-x}
+      #menu1Wrap a {display:block;float:left;color:#7e8f9b;font-weight:bold;  line-height:14px;margin-right:2px;padding:4px 8px 3px 6px;text-decoration:none;border-left:1px solid #ccc;background:url(/common/styles01/images/levelA_tab.gif) 100% 0px no-repeat;}
+      #menu1Wrap a:hover {border-left:1px solid #b1b1b1;background:url(/common/styles01/images/levelA_tab.gif) 100% 0px no-repeat;color:#4986ff;}/* level A selected tab */
+      #menu1Wrap a.selectedTab {display:block;float:left;border-left:1px solid #b1b1b1;font-weight:bold;text-decoration:none;padding-bottom:4px;color:#369;background:url(/common/styles01/images/levelA_tab.gif) 100% -150px no-repeat;}
+      #menu1Wrap a.selectedTab:hover {color:#4986ff;}
+
+      #menu1Wrap a#messageIcon {padding-right: 35px; display: block; padding-left: 6px; font-weight: bold; background: url(/common/styles01/images/levelA_tab_msg.gif) no-repeat 100% 0px; float: left; padding-bottom: 3px; border-left: #ccc 1px solid; color: #7e8f9b; line-height: 14px; margin-right: 2px; padding-top: 4px; text-decoration: none}
+      #menu1Wrap a#messageIcon:hover {background: url(/common/styles01/images/levelA_tab_msg.gif) no-repeat 100% 0px; border-left: #ccc 1px solid;color:#4986ff;}
+      #menu1Wrap a.selectedTab#messageIcon {display:block;float:left;border-left:1px solid #b1b1b1;font-weight:bold;text-decoration:none;padding-bottom:4px;color:#369;background: url(/common/styles01/images/levelA_tab_msg.gif) 100% -150px no-repeat;}
+      #menu1Wrap a.selectedTab#messageIcon:hover {color:#4986ff;}
+
+      #menu1Wrap a#offerStar {padding-right: 35px; display: block; padding-left: 6px; font-weight: bold; background: url(/common/styles01/images/levelA_tab_offer.gif) no-repeat 100% 0px; float: left; padding-bottom: 3px; border-left: #ccc 1px solid; color: #7e8f9b; line-height: 14px; margin-right: 2px; padding-top: 4px; text-decoration: none}
+      #menu1Wrap a#offerStar:hover {background: url(/common/styles01/images/levelA_tab_offer.gif) no-repeat 100% 0px; border-left: #ccc 1px solid;color:#4986ff;}
+      #menu1Wrap a.selectedTab#offerStar {display:block;float:left;border-left:1px solid #b1b1b1;font-weight:bold;text-decoration:none;padding-bottom:4px;color:#369;background: url(/common/styles01/images/levelA_tab_offer.gif) 100% -150px no-repeat;}
+      #menu1Wrap a.selectedTab#offerStar:hover {color:#4986ff;}
+      /* Level B Styles---------------------------------------------*/
+      #menu2 {width:100%;margin:-2px 0 0 0;padding:0;line-height:normal;border-top:1px solid #dddece;font-size:13px;}
+      #menu2Wrap {float:left;width:100%;padding-top:1px;background:url(/common/styles01/images/levelB_bkg.gif) bottom repeat-x}
+      #menu2Wrap a {display:block;float:left;color:#7e8f9b;font-weight:bold;line-height:14px;margin-right:2px;padding:4px 8px 3px 6px;text-decoration:none;border-left:1px solid #ccc;background:url(/common/styles01/images/levelB_tab.gif) 100% 0px no-repeat;}
+      #menu2Wrap a:hover {border-left:1px solid #b1b1b1;font-weight:bold;background:url(/common/styles01/images/levelB_tab.gif) 100% 0px no-repeat;color:#4986ff; background-color:#fff;}
+      #menu2Wrap a.selectedTab {display:block;float:left;color:#369;font-weight:bold;text-decoration:none;padding-bottom:4px;border-left:1px solid #b1b1b1;background:url(/common/styles01/images/levelB_tab.gif) 100% -150px no-repeat}
+      #menu2Wrap a.selectedTab:hover {color:#4986ff;background-color:#fff;border-left:1px solid #b1b1b1;}
+ 

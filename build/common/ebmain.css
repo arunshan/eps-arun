@@ -1,0 +1,241 @@
+/* 
+    Document   : ebmain
+    Created on : Aug 20, 2009, 4:33:48 AM
+    Author     : Administrator
+    Description: global style sheet, to be replaced by custom style sheet. TODO    
+*/
+
+root
+{ 
+  display: block;
+}
+
+*
+{
+  FONT-SIZE: 9pt;
+  FONT-FAMILY: Verdana,  Arial, sans-serif;
+}
+BODY
+{
+  PADDING-RIGHT: 0px;
+  PADDING-LEFT: 0px;
+  FONT-SIZE: 9pt;
+  PADDING-BOTTOM: 0px;
+  MARGIN: 0px;
+  PADDING-TOP: 0px;
+  BACKGROUND-COLOR: white;
+}
+.mv_lbl
+{
+  BACKGROUND-COLOR: #0066FF;
+  color: #FFFFFF;
+  font-size: 9pt;
+  font-weight: normal;
+  text-decoration: none;
+  text-align: right;
+}
+
+.nv_lbl
+{
+  BACKGROUND-COLOR: white;
+  font-size: 9pt;
+  font-weight: normal;
+  text-decoration: none;
+  text-align: right;
+}
+.mv_lbltop
+{
+  BACKGROUND-COLOR: #0066FF;
+  color: #FFFFFF;
+  font-size: 9pt;
+  font-weight: normal;
+  text-decoration: none;
+  text-align: center;
+}
+
+.nv_lbltop
+{
+  BACKGROUND-COLOR: white;
+  font-size: 9pt;
+  font-weight: normal;
+  text-decoration: none;
+  text-align: center;
+}
+
+.me_lbl
+{
+  BACKGROUND-COLOR: #0066FF;
+  color: #FFFFFF;
+  font-size: 9pt;
+  font-weight: normal;
+  text-decoration: none;
+  text-align: right;
+}
+
+.ne_lbl
+{
+  BACKGROUND-COLOR: #DDDDDD;
+  font-size: 9pt;
+  font-weight: normal;
+  text-decoration: none;
+  text-align: right;
+
+}
+
+.me_lbltop
+{
+  BACKGROUND-COLOR: #0066FF;
+  color: #FFFFFF;
+  font-size: 9pt;
+  font-weight: normal;
+  text-decoration: none;
+  text-align: center;
+}
+
+.ne_lbltop
+{
+  BACKGROUND-COLOR: #DDDDDD;
+  font-size: 9pt;
+  font-weight: normal;
+  text-decoration: none;
+  text-align: center;
+}
+
+.mv_dat
+{
+  BACKGROUND-COLOR: white;
+  font-size: 9pt;
+  font-weight: normal;
+  text-decoration: none;
+  text-align: left;
+}
+
+.nv_dat
+{
+  BACKGROUND-COLOR: white;
+  font-size: 9pt;
+  font-weight: normal;
+  text-decoration: none;
+  text-align: left;
+}
+.me_dat
+{
+  BACKGROUND-COLOR: white;
+  font-size: 9pt;
+  font-weight: normal;
+  text-decoration: none;
+  text-align: left;
+}
+
+.ne_dat
+{
+  BACKGROUND-COLOR: white;
+  font-size: 9pt;
+  font-weight: normal;
+  text-decoration: none;
+  text-align: left;
+}
+
+.ErrorFont
+{
+  FONT-SIZE: 9pt; 
+  COLOR: #ff0000;
+  TEXT-DECORATION: none
+}
+.CustomFont1
+{
+  FONT-WEIGHT: normal;
+  FONT-SIZE: 0pt;
+  COLOR: #000000;
+  TEXT-DECORATION: none
+}
+.CustomFont2
+{
+  FONT-WEIGHT: normal;
+  FONT-SIZE: 9pt;
+  COLOR: #000000;
+  TEXT-DECORATION: none
+}
+.CustomFont3
+{
+  FONT-WEIGHT: normal;
+  FONT-SIZE: 9pt;
+  COLOR: #FFFFFF;
+  TEXT-DECORATION: none;
+  FONT-WEIGHT: bold;
+}
+
+.ddoverlap
+{
+  border-bottom: 1px solid #bbb8a9;
+  font-size: 11pt;
+  white-space: nowrap;
+}
+
+.ddoverlap ul
+{
+  padding: 0;
+  margin: 0;
+  font: bold 90% default;
+  list-style-type: none;
+}
+
+.ddoverlap li
+{
+  display: inline;
+  margin: 0;
+}
+
+.ddoverlap li a
+{
+  padding: 3px 7px;
+  text-decoration: none;
+  padding-right: 32px; /*extra right padding to account for curved right edge of tab image*/
+  color: blue;
+  background: transparent url(http://myinfo.com/administration/media/righttabselected.gif) 100% 1px no-repeat; /*give illusion of shifting 1px down vertically*/
+  border-left: 1px solid #dbdbd5;
+  position: relative;
+  display: block;
+  float: left;
+  margin-left: -10px; /*shift tabs 20px to the left so they overlap*/
+  left: 20px;
+}
+
+.ddoverlap li a:visited
+{
+  color: blue;
+}
+
+.ddoverlap li a:hover
+{
+  text-decoration: underline;
+}
+
+.ddoverlap li.notselected a
+{ /*selected tab style*/
+  color: black;
+  z-index: 100; /*higher z-index so selected tab is topmost*/
+  top: 1px; /*Shift tab 1px down so the border beneath it is covered*/
+  background: transparent url(http://myinfo.com/administration/media/righttabdefault.gif) 100% 0 no-repeat;
+}
+
+.ddoverlap li.selected a
+{ /*selected tab style*/
+  color: black;
+  z-index: 100; /*higher z-index so selected tab is topmost*/
+  top: 1px; /*Shift tab 1px down so the border beneath it is covered*/
+  background: transparent url(http://myinfo.com/administration/media/righttabselected.gif) 100% 0 no-repeat;
+}
+
+.ddoverlap li.selected a:hover
+{
+  text-decoration: none;
+}
+
+.option2
+{
+  COLOR: red;
+  BACKGROUND-COLOR: lime;
+  TEXT-DECORATION: none;
+  FONT-WEIGHT: bold;
+}
