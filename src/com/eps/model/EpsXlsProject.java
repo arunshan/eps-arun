@@ -11,6 +11,7 @@ package com.eps.model;
  */
 import com.ederbase.model.EbEnterprise;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.util.Calendar;
@@ -220,6 +221,7 @@ class EpsXlsProject //extends EpsUserData
         iEditId = Integer.parseInt(stEdit);
       else
         iEditId = -2;
+      
       int iMaxRecords = this.ebEnt.dbDyn.ExecuteSql1n("select count(*) from Requirements where nmProjectId=" + stPk + " and nmBaseline=" + this.nmBaseline + " and (ReqFlags & 0x1) = 0");
       stSql = "select * from Requirements where nmProjectId=" + stPk + " and nmBaseline=" + this.nmBaseline + " and (ReqFlags & 0x1) =0 order by ReqId,RecId desc limit " + iFrom + "," + iBlock;
       ResultSet rs = this.ebEnt.dbDyn.ExecuteSql(stSql);
@@ -305,7 +307,10 @@ class EpsXlsProject //extends EpsUserData
             sbReturn.append(iF);
             sbReturn.append(" ");
             sbReturn.append(getStyle(0));
+            if(rsFields.getInt("nmDataType") == 3 || rsFields.getInt("nmDataType") == 4)
+	       		 sbReturn.append(" align='left' ");	//align text left
             sbReturn.append(">");
+            
             if (iF == 1)
             {
               sbReturn.append("<a name='row");
@@ -326,6 +331,10 @@ class EpsXlsProject //extends EpsUserData
               if (rsFields.getString("stDbFieldName").equals("ReqTitle"))
                 for (int i = 0; i < rs.getInt("ReqLevel"); i++)
                   sbReturn.append("&nbsp;&nbsp;");
+              else if(rsFields.getString("stDbFieldName").equals("ReqCost")){
+            	  DecimalFormat df = new DecimalFormat("#,###,###,##0.00");
+            	  stValue = df.format(Double.parseDouble(stValue));
+              }
               sbReturn.append(stValue.replace("\n", "<BR>"));
             }
           }
@@ -832,9 +841,9 @@ class EpsXlsProject //extends EpsUserData
             continue;
           //  + " onmouseout='timer(2)'>";
           if ((iR & 1) != 0)
-            stClass = " class=l1td ";
+            stClass = " class=l1td ";		//white row
           else
-            stClass = " class=l1td2 ";
+            stClass = " class=l1td2 ";		//grey row
           stId = " id=r" + rs.getInt("RecId") + "_";
           stNm = " name=r" + rs.getInt("RecId") + "_";
           String stDescription = rs.getString("SchDescription");
@@ -855,31 +864,189 @@ class EpsXlsProject //extends EpsUserData
             sbReturn.append("<tr>");
           }
           iSubmit = 0;
+          String laborcat = "";
+          String tbstyle = "";
+          //insert each field as column
           for (int iF = 1; iF <= this.iMaxFields; iF++)
           {
             this.rsFields.absolute(iF);
-            sbReturn.append("<td " + stClass + stId + iF + stNm + iF + " " + getStyle(0) + ">");
-            if (iF == 1)
-              sbReturn.append("<a name='row" + rs.getString("SchId") + "'></a>");
-
             String stValue = rs.getString(rsFields.getString("stDbFieldName"));
-            if (stValue == null)
-              stValue = "";
-            if (this.rsFields.getInt("nmDataType") == 5 && stValue.length() > 0)
-              sbReturn.append(this.epsUd.rsMyDiv.getString("stMoneySymbol") + " ");
-            if (iEditId == rs.getInt("RecId") && (rsFields.getInt("nmFlags") & 0x1) != 0)
-            {
-              sbReturn.append(editXlsField(stValue));
-            } else
-            {
-              if (rsFields.getString("stDbFieldName").equals("SchTitle"))
-                for (int i = 0; i < rs.getInt("SchLevel"); i++)
-                  sbReturn.append("&nbsp;&nbsp;");
-              stValue = makeListValue(rsFields, stValue);
-              sbReturn.append(stValue.replace("\n", "<BR>"));
+            
+            if (rsFields.getInt("nmForeignId") == 825 && this.ebEnt.ebUd.request.getParameter("edit") != null){
+            	//don't append labor categories if inline edit but store labor categories and process below all fields
+            	laborcat = stValue;
+            } else {
+            	 if(rsFields.getInt("nmDataType") == 3 || rsFields.getInt("nmDataType") == 4 || rsFields.getInt("nmDataType") == 41)
+            		 sbReturn.append("<td " + stClass + stId + iF + stNm + iF + " " + getStyle(0) + " align='left'>");	//align text left
+            	 else
+            		 sbReturn.append("<td " + stClass + stId + iF + stNm + iF + " " + getStyle(0) + ">");
+            	 tbstyle = stClass + stId + iF + stNm + iF + " " + getStyle(0);
+                 if (iF == 1)
+                   sbReturn.append("<a name='row" + rs.getString("SchId") + "'></a>");
+                 if (stValue == null)
+                   stValue = "";
+                 if (this.rsFields.getInt("nmDataType") == 5 && stValue.length() > 0){
+                   sbReturn.append(this.epsUd.rsMyDiv.getString("stMoneySymbol") + " ");		//inline fields
+                 }
+                 if (iEditId == rs.getInt("RecId") && (rsFields.getInt("nmFlags") & 0x1) != 0)
+                 {
+                   sbReturn.append(editXlsField(stValue));		//passes value into a editable field
+                 } else
+                 {
+                   if (rsFields.getString("stDbFieldName").equals("SchTitle"))
+                     for (int i = 0; i < rs.getInt("SchLevel"); i++)
+                       sbReturn.append("&nbsp;&nbsp;");	//indentations for levels
+                   
+                   
+                   
+                   //labor categories column
+                   if(!stValue.equals("") && rsFields.getString("stDbFieldName").equals("SchLaborCategories")){
+                	  String stReturn = "";
+         	    	  String stRowspan = "";
+         	    	  String[] aFields = null;
+         	    	  String[] aRecords = stValue.split("\\|", -1);
+                      int iRecMax = aRecords.length;
+
+                      for (int iRa = 0; iRa < iRecMax; iRa++)
+                      {
+                         if (iRa < iRecMax)
+                         {
+                           aFields = aRecords[iRa].split("~", -1); // LcId, MaxEmployess, Effort,
+                           ResultSet rsLcAll = this.ebEnt.dbDyn.ExecuteSql("SELECT * FROM LaborCategory WHERE nmLcId="+aFields[0]);
+                           rsLcAll.last();
+                           stValue = makeListValue(rsFields, rsLcAll.getString("LaborCategory"));
+                           sbReturn.append(stValue.replace("\n", "<BR>")+"<BR>");
+                         } else
+                         {
+                           aFields = new String[7];
+                           for (int i = 0; i < aFields.length; i++)
+                           {
+                             if (i == 1)
+                               aFields[i] = "1";
+                             else
+                               aFields[i] = "";
+                           }
+                         }
+                      }
+                   }
+                   else if(stValue.equals("") && rsFields.getString("stDbFieldName").equals("SchLaborCategories")){
+                	   stValue = makeListValue(rsFields, "");
+                	   sbReturn.append(stValue.replace("\n", "<BR>"));
+                   }
+                   else{
+                	   stValue = makeListValue(rsFields, stValue);
+                	   sbReturn.append(stValue.replace("\n", "<BR>"));
+                   }
+                 }
             }
           }
           sbReturn.append("</tr>");
+          
+          //append labor category row
+          if (iEditId == rs.getInt("RecId") && (rsFields.getInt("nmFlags") & 0x1) != 0){
+        	  sbReturn.append("<tr><td " + tbstyle + "><input type=submit name=savedataxls value='Save' onClick=\"return setSubmitId(9970);\"></td>" +
+        	  		"<td " + tbstyle + "><input type=submit name=savedataxls value='Cancel' onClick=\"return setSubmitId(8888);\"></td>" +
+        	  		"<td " + tbstyle + " colspan='"+this.iMaxFields+"'>");
+        	  
+        	  //parse labor cat rows
+        	  String stReturn = "";
+	    	  String stRowspan = "";
+	    	  String[] aFields = null;
+	    	  String[] aRecords = null;
+	    	  int iRecMax = 0;
+        	  
+	    	  if (laborcat.length() > 0)
+              {
+                aRecords = laborcat.split("\\|", -1);
+                iRecMax = aRecords.length;
+              } else
+              {
+                aRecords = new String[1];
+                iRecMax = 0;
+              }
+	    	  
+	    	  sbReturn.append("<table class='l1table'><tr class=d1>"+
+	        		    "<td colspan=2>Labor Category / Max Users</td><td>Effort</td>"+
+	        		    "<td>Must Assign</td><td>Most Desireable</td><td>Least Desirable</td><td>Do Not Assign</td></tr>");
+	    	  stRowspan = "";
+	    	  int iRa = 0;
+	    	  if(iRecMax > 0){		//add existing labor category rows
+	              for (iRa = 0; iRa < iRecMax; iRa++)
+	              {
+	                stReturn += "<tr class=d0>";
+	                if (iRa < iRecMax)
+	                {
+	                  aFields = aRecords[iRa].split("~", -1); // LcId, MaxEmployess, Effort,
+	                } else
+	                {
+	                  aFields = new String[7];
+	                  for (int i = 0; i < aFields.length; i++)
+	                  {
+	                    if (i == 1)
+	                      aFields[i] = "1";
+	                    else
+	                      aFields[i] = "";
+	                  }
+	                }
+	
+	                stReturn += "<td " + stRowspan + "><select name=lc_" + iRa + " id=lc_" + iRa + ">";
+	                ResultSet rsLcAll = this.ebEnt.dbDyn.ExecuteSql("SELECT * FROM LaborCategory order by LaborCategory");
+	                rsLcAll.last();
+	                int iMaxLc = rsLcAll.getRow();
+	                //populate dropdown
+	                stReturn += this.ebEnt.ebUd.addOption2("-- Select Labor Category --", "0", aFields[0]);
+	                for (int iLc = 1; iLc <= iMaxLc; iLc++)
+	                {
+	                  rsLcAll.absolute(iLc);
+	                  stReturn += this.ebEnt.ebUd.addOption2(rsLcAll.getString("LaborCategory"), rsLcAll.getString("nmLcId"), aFields[0]);
+	                }
+	                stReturn += "</select></td>";
+	                stReturn += "<td " + stRowspan + "><select name=nr_" + iRa + " id=nr_" + iRa + ">";
+	                for (int iLc = 1; iLc <= 20; iLc++)
+	                {
+	                  stReturn += this.ebEnt.ebUd.addOption2("" + iLc, "" + iLc, aFields[1]);
+	                }
+	                stReturn += "</select></td>";
+	                stReturn += "<td " + stRowspan + "><input type=text size=5 style='text-align:right' name=est_" + iRa + " id=est_" + iRa + " value=\"" + aFields[2] + "\"></td>";
+	                stReturn += "<td " + stRowspan + ">" + this.epsUd.epsEf.getMulitUsers(stChild, 9001, "_must_" + iRa, aFields[3], "lc_" + iRa) + "</td>";
+	                stReturn += "<td " + stRowspan + ">" + this.epsUd.epsEf.getMulitUsers(stChild, 9002, "_most_" + iRa, aFields[4], "lc_" + iRa) + "</td>";
+	                stReturn += "<td " + stRowspan + ">" + this.epsUd.epsEf.getMulitUsers(stChild, 9003, "_least_" + iRa, aFields[5], "lc_" + iRa) + "</td>";
+	                stReturn += "<td " + stRowspan + ">" + this.epsUd.epsEf.getMulitUsers(stChild, 9004, "_not_" + iRa, aFields[6], "lc_" + iRa) + "</td>";
+	                stReturn += "</tr>";
+	              }
+	    	  }
+	    	  	//add new labor category row
+	    	  	stReturn += "<tr class=d0>";
+				stReturn += "<td " + stRowspan + " align='left'>Add New:<br><select name=lc_" + iRa + " id=lc_" + iRa + ">";
+				ResultSet rsLcAll = this.ebEnt.dbDyn.ExecuteSql("SELECT * FROM LaborCategory order by LaborCategory");
+				rsLcAll.last();
+				int iMaxLc = rsLcAll.getRow();
+				//populate dropdown
+				stReturn += this.ebEnt.ebUd.addOption2("-- Select Labor Category --", "0", "");
+				for (int iLc = 1; iLc <= iMaxLc; iLc++)
+				{
+				  rsLcAll.absolute(iLc);
+				  stReturn += this.ebEnt.ebUd.addOption2(rsLcAll.getString("LaborCategory"), rsLcAll.getString("nmLcId"), "");
+				}
+				stReturn += "</select></td>";
+				stReturn += "<td " + stRowspan + "><select name=nr_" + iRa + " id=nr_" + iRa + ">";
+				for (int iLc = 1; iLc <= 20; iLc++)
+				{
+				  stReturn += this.ebEnt.ebUd.addOption2("" + iLc, "" + iLc, "");
+				}
+				stReturn += "</select></td>";
+				stReturn += "<td " + stRowspan + "><input type=text size=5 style='text-align:right' name=est_" + iRa + " id=est_" + iRa + " value=\"\"></td>";
+				stReturn += "<td " + stRowspan + ">" + this.epsUd.epsEf.getMulitUsers(stChild, 9001, "_must_" + iRa, "", "lc_" + iRa) + "</td>";
+				stReturn += "<td " + stRowspan + ">" + this.epsUd.epsEf.getMulitUsers(stChild, 9002, "_most_" + iRa, "", "lc_" + iRa) + "</td>";
+				stReturn += "<td " + stRowspan + ">" + this.epsUd.epsEf.getMulitUsers(stChild, 9003, "_least_" + iRa, "", "lc_" + iRa) + "</td>";
+				stReturn += "<td " + stRowspan + ">" + this.epsUd.epsEf.getMulitUsers(stChild, 9004, "_not_" + iRa, "", "lc_" + iRa) + "</td>";
+				stReturn += "</tr>";
+			
+			  //close the labor category table
+	    	  stReturn += "</table><input type=hidden name=imax id=imax value='" + (iRecMax+1) + "'>";
+              sbReturn.append(stReturn);
+          }
+          
           iPrevLevel = rs.getInt("SchLevel");
         }
         sbReturn.append(doNext(stChild, iMaxFields, iMaxRecords, iFrom, iBlock, stGoBack, stPk));
@@ -1027,16 +1194,21 @@ class EpsXlsProject //extends EpsUserData
       for (int iF = 1; iF <= iMaxFields; iF++)
       {
         rsFields.absolute(iF);
-        stLabel = rsFields.getString("stShort");
-        if (stLabel == null || stLabel.length() <= 0)
-          stLabel = rsFields.getString("stLabelShort");
-        if (stLabel == null || stLabel.length() <= 0)
-          stLabel = rsFields.getString("stLabel");
-        sbReturn.append("<th class=l1th style='width:");
-        sbReturn.append(rsFields.getString("nmWidth"));
-        sbReturn.append("%;'>");
-        sbReturn.append(stLabel);
-        sbReturn.append("</th>");
+        
+        if (rsFields.getInt("nmForeignId") == 825 && this.ebEnt.ebUd.request.getParameter("edit") != null){
+        	//skip labor category column if inline edit
+        }else{
+	        stLabel = rsFields.getString("stShort");
+	        if (stLabel == null || stLabel.length() <= 0)
+	          stLabel = rsFields.getString("stLabelShort");
+	        if (stLabel == null || stLabel.length() <= 0)
+	          stLabel = rsFields.getString("stLabel");
+	        sbReturn.append("<th class=l1th style='width:");
+	        sbReturn.append(rsFields.getString("nmWidth"));
+	        sbReturn.append("%;'>");
+	        sbReturn.append(stLabel);
+	        sbReturn.append("</th>");
+        }
       }
       sbReturn.append("</tr>");
     } catch (Exception e)
@@ -1093,7 +1265,7 @@ class EpsXlsProject //extends EpsUserData
       sbReturn.append(stChild);
       sbReturn.append("&from=");
       sbReturn.append(i);
-      sbReturn.append("'\" value='&gt;&gt; Last'>&nbsp;&nbsp;&nbsp;&nbsp;");
+      sbReturn.append("'\" value='&gt;&gt; Last' >&nbsp;&nbsp;&nbsp;&nbsp;");
     } else
     {
       sbReturn.append("<td align=right>No records found: </td><td align=right>");
@@ -1150,7 +1322,7 @@ class EpsXlsProject //extends EpsUserData
       //this.rsFields
       String stStyle = getStyle(1.7);
       String s1 = "";
-      switch (rsFields.getInt("nmDataType"))
+      switch (rsFields.getInt("nmDataType"))		//create editable fields for inline schedule and requirements
       {
         case 4:
           s1 = "<textarea name=f" + rsFields.getString("nmForeignId") + " id=f" + rsFields.getString("nmForeignId") + " rows=4 " + stStyle + ">" + stValue + "</textarea>";
@@ -1159,7 +1331,7 @@ class EpsXlsProject //extends EpsUserData
         default:
           s1 = "<input '" + stStyle + "' maxsize=" + rsFields.getString("nmMaxBytes") + " type=text name=f" + rsFields.getString("nmForeignId") + " id=f" + rsFields.getString("nmForeignId") + " value=\"" + stValue + "\">";
           sbReturn.append(s1);
-          if (iSubmit == 0)
+          if (iSubmit == 0 && Integer.parseInt(this.ebEnt.ebUd.request.getParameter("child")) != 21)		//submit and cancel buttons for non-schedule
           {
             iSubmit++; // only do it once
             s1 = "<center><br><input type=submit name=savedataxls value='Save' onClick=\"return setSubmitId(9970);\">";
@@ -1172,6 +1344,7 @@ class EpsXlsProject //extends EpsUserData
             }
             sbReturn.append("</center>");
           }
+
           break;
       }
       this.epsUd.epsEf.addValidation(rsFields.getInt("nmForeignId"));
@@ -1219,6 +1392,7 @@ class EpsXlsProject //extends EpsUserData
     String stSql = "";
     String stSqlOld = "";
     String stValue = "";
+    int rLvl = -1;
     try
     {
       ResultSet rsTable = this.ebEnt.dbDyn.ExecuteSql("SELECT * FROM teb_table where nmTableId=" + stChild);
@@ -1226,9 +1400,8 @@ class EpsXlsProject //extends EpsUserData
       stSqlOld = "select * from " + rsTable.getString("stDbTableName") + " ";
       xlsHeaders(stChild);
       stSql = "update " + rsTable.getString("stDbTableName") + " set ";
-
       int iCount = 0;
-      for (int iF = 1; iF < this.iMaxFields; iF++)
+      for (int iF = 1; iF <= this.iMaxFields; iF++)
       {
         this.rsFields.absolute(iF);
         stValue = this.ebEnt.ebUd.request.getParameter("f" + this.rsFields.getString("nmForeignId"));
@@ -1249,13 +1422,44 @@ class EpsXlsProject //extends EpsUserData
             stSql += ",";
           stSql += this.rsFields.getString("stDbFieldName") + "=" + this.ebEnt.dbDyn.fmtDbString(stValue);
           iCount++;
+        
+        
+          if(this.rsFields.getString("stDbFieldName").equals("ReqLevel") && stChild.equals("19")){
+        	  rLvl = Integer.parseInt(stValue);		//requirement level
+          }
         }
+      }    
+      
+      //build labor category string
+  	  if(this.ebEnt.ebUd.request.getParameter("lc_0") != null && Integer.parseInt(this.ebEnt.ebUd.request.getParameter("child")) == 21 && Integer.parseInt(this.ebEnt.ebUd.request.getParameter("imax")) > 0){
+  		  String lcfields = "";
+	      for (int iR = 0; iR < Integer.parseInt(this.ebEnt.ebUd.request.getParameter("imax")); iR++){
+	    	  if(iR == 0)
+	    		  stSql += ", SchLaborCategories=";
+	    	  else if(!this.ebEnt.ebUd.request.getParameter("lc_"+iR).equals("0"))		//don't add | to new row fields
+	    		  lcfields += "|";
+	    	  if(!this.ebEnt.ebUd.request.getParameter("lc_"+iR).equals("0"))	//skip the add new labor category row
+	    		  lcfields += this.ebEnt.ebUd.request.getParameter("lc_"+iR) + "~" + this.ebEnt.ebUd.request.getParameter("nr_"+iR) + "~" + this.ebEnt.ebUd.request.getParameter("est_"+iR) + "~" + this.ebEnt.ebUd.request.getParameter("f9001_must_"+iR) + "~" + this.ebEnt.ebUd.request.getParameter("f9002_most_"+iR) + "~" + this.ebEnt.ebUd.request.getParameter("f9003_least_"+iR) + "~" + this.ebEnt.ebUd.request.getParameter("f9004_not_"+iR) + "~";
+	      }
+	      stSql += this.ebEnt.dbDyn.fmtDbString(lcfields);
       }
-      stSql += " where RecId = " + this.ebEnt.ebUd.request.getParameter("edit") + " and nmBaseline=" + this.nmBaseline + " and nmProjectId=" + stPk;
+  	  
+      //calc 1 level below if this level is not 0. order by desc and find first req level that matches
+  	  if(Integer.parseInt(this.ebEnt.ebUd.request.getParameter("child")) == 19){
+  		  //calculate parent level and add update parent id if not high level
+  		  if(rLvl > 0){
+	  		  //edit parent according to level
+  			  int rId = this.ebEnt.dbDyn.ExecuteSql1n("SELECT ReqId FROM requirements WHERE RecId = " + this.ebEnt.ebUd.request.getParameter("edit"));
+  			  stSql += ", ReqParentRecId=" + this.ebEnt.dbDyn.fmtDbString(this.ebEnt.dbDyn.ExecuteSql1n("SELECT RecId FROM requirements WHERE ReqId < " + rId + " AND ReqLevel=" + (rLvl-1) + " AND nmProjectId=" + stPk + " ORDER BY ReqId DESC")+"");
+  		  }
+  	  }
+  
+  	  stSql += " where RecId = " + this.ebEnt.ebUd.request.getParameter("edit") + " and nmBaseline=" + this.nmBaseline + " and nmProjectId=" + stPk;
       stSqlOld += " where RecId = " + this.ebEnt.ebUd.request.getParameter("edit") + " and nmBaseline=" + this.nmBaseline + " and nmProjectId=" + stPk;
 
       ResultSet rsOld = this.ebEnt.dbDyn.ExecuteSql(stSqlOld);
       this.ebEnt.dbDyn.ExecuteUpdate(stSql);
+      
       ResultSet rsNew = this.ebEnt.dbDyn.ExecuteSql(stSqlOld);
       this.epsUd.epsEf.addAuditTrail(rsTable, rsOld, rsNew, this.ebEnt.ebUd.request.getParameter("edit"), stPk, nmBaseline);
     } catch (Exception e)
@@ -1633,12 +1837,18 @@ class EpsXlsProject //extends EpsUserData
           return this.editMake(stChild, stPk);
         }
       }
+      
       String s1 = "<center><table><tr><td valign=middle><h2>" + this.rsProject.getString("ProjectName") + "</h2>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>";
       sbReturn.append(s1);
       if (stChild.equals("21"))
       {
         sbReturn.append("<td align=left><b>");
         sbReturn.append(this.epsUd.epsEf.fullSchTitle(stPk, this.stPk, this.nmBaseline));
+        sbReturn.append("</b><br>&nbsp;</td>");
+      }else if (stChild.equals("19"))
+      {
+        sbReturn.append("<td align=left><b>");
+        sbReturn.append(this.epsUd.epsEf.fullReqTitle(stPk, this.stPk, this.nmBaseline));
         sbReturn.append("</b><br>&nbsp;</td>");
       }
       sbReturn.append("</tr></table>");
@@ -1674,7 +1884,7 @@ class EpsXlsProject //extends EpsUserData
       if (stChild.length() <= 0)
       {
         sbReturn.append(analyzeLink());
-        sbReturn.append(processCriticalPath());
+        /*sbReturn.append(processCriticalPath());*/
       }
     } catch (Exception e)
     {
@@ -2857,6 +3067,9 @@ class EpsXlsProject //extends EpsUserData
               // Insert NEW
               int iRemainder = Integer.parseInt(nmRemainder);
               linkMap(1, stPk, nmBaseline, stPk, iFromId, stPk, iToId, dPercent, "", 0, iRemainder);
+  
+              //calculate the requirement cost
+              this.processRequirementCost(iFromId);
             } else if (stChild.equals("21") && stFromOrig.equals("-1"))
             {
               // Insert NEW
@@ -2878,6 +3091,9 @@ class EpsXlsProject //extends EpsUserData
                   + ",l.nmRemainder=" + nmRemainder
                   + " where l.nmProjectId=p.RecId and l.nmBaseline=p.CurrentBaseline and l.nmLinkFlags=1"
                   + " and l.nmProjectId=" + stPk + " and l.nmFromId=" + stFromOrig + " and l.nmToId=" + stToOrig;
+                
+                //calculate the requirement cost
+                this.processRequirementCost(Integer.parseInt(stFrom));
               }
               this.ebEnt.dbDyn.ExecuteUpdate(stSql);
             }
@@ -2923,9 +3139,27 @@ class EpsXlsProject //extends EpsUserData
         }
         sbReturn.append("<tr><td>Requirement ID:</td><td><input type=text name=stFrom style='text-align:right;width:50px;' value=\"");
         sbReturn.append(stFrom);
-        sbReturn.append("\"></td></tr><tr><td>Task ID:<td><input type=text style='text-align:right;width:50px;' name=stTo value=\"");
-        sbReturn.append(stTo);
-        sbReturn.append("\"></td></tr><tr><td>Map:<td><input type=test style='text-align:right;width:50px;' name=nmPercent value=\"");
+       sbReturn.append("\"></td></tr><tr><td>Task ID:<td>");
+        
+        if (stTo==null || "".equals(stTo) || "-1".equals(stTo)) {
+        	sbReturn.append("<select name='stTo'>");
+            sbReturn.append(this.ebEnt.ebUd.addOption2("Select Task id", "-1", stTo));
+            ResultSet taskIds = this.ebEnt.dbDyn.ExecuteSql("SELECT * FROM Schedule s where (SchFlags & 0x10 ) != 0 and s.nmProjectId="+stPk);
+            taskIds.last();
+            int maxIds = taskIds.getRow();
+            for (int i=1; i<=maxIds; i++) {
+            	taskIds.absolute(i);
+            	sbReturn.append(this.ebEnt.ebUd.addOption2(Integer.toString(taskIds.getInt("SchId")) + ": " + taskIds.getString("SchTitle"), Integer.toString(taskIds.getInt("SchId")), stTo));
+            }
+            sbReturn.append("</select>");
+        } else {
+            sbReturn.append("<input type=text style='text-align:right;width:50px;' name=stTo value=\"");
+        	sbReturn.append(stTo);
+        	sbReturn.append("\">");
+        }
+        
+        
+        sbReturn.append("</td></tr><tr><td>Map:<td><input type=test style='text-align:right;width:50px;' name=nmPercent value=\"");
         sbReturn.append(nmPercent);
         sbReturn.append("\">% <select name=nmRemainder>");
         sbReturn.append(this.ebEnt.ebUd.addOption2("Map by Percent", "0", nmRemainder));
@@ -4118,5 +4352,25 @@ class EpsXlsProject //extends EpsUserData
       stError += "ERROR makeListValue: " + e;
     }
     return sbReturn.toString();
+  }
+  
+  /*
+   * Calculate specific requirement's cost for the current project
+   */
+  private void processRequirementCost(int reqID) throws SQLException{
+	  //get requirements we need to calculate
+      Double rCost = 0.00;
+      DecimalFormat df = new DecimalFormat("#########0.00");
+      
+      //calculate sum of tasks for each requirement cost
+      ResultSet stResult = this.ebEnt.dbDyn.ExecuteSql("select l.nmPercent, l.nmRemainder, l.nmToId, r.ReqCost from teb_link l left join requirements r on l.nmFromId=r.RecId and l.nmProjectId=r.nmProjectId and l.nmBaseline=r.nmBaseline where l.nmProjectId=" + stPk + " and l.nmBaseline=" + this.nmBaseline + " and nmFromId=" + reqID);
+      
+      while(stResult.next()){
+    	  if(stResult.getString("l.nmRemainder").equals("1"))
+    		  rCost += Double.parseDouble(this.ebEnt.dbDyn.ExecuteSql1("select SchCost from schedule where nmProjectId=" + stPk + " and nmBaseline=" + this.nmBaseline + " and RecId=" + stResult.getString("l.nmToId")));
+    	  else
+    		  rCost += Double.parseDouble(this.ebEnt.dbDyn.ExecuteSql1("select SchCost from schedule where nmProjectId=" + stPk + " and nmBaseline=" + this.nmBaseline + " and RecId=" + stResult.getString("l.nmToId"))) + (Double.parseDouble(stResult.getString("l.nmPercent"))*0.1);
+      }
+	  this.ebEnt.dbDyn.ExecuteUpdate("update requirements set ReqCost='" + df.format(rCost) + "' where nmProjectId=" + stPk + " and RecId=" + reqID + " and nmBaseline=" + this.nmBaseline);
   }
 }

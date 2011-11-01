@@ -234,7 +234,7 @@ public class EpsEditField
             + "from Calendar c left join teb_choices ch on ch.nmFieldId=" + iF + " and ch.UniqIdChoice=c.nmFlags "
             + "where dtDay >= now() and  c.nmDivision=1 and c.nmUser =" + this.ebEnt.ebUd.request.getParameter("pk") + " "
             + " order by dtDay limit 100", 4, rsFields,
-            "~Type^55px~Comment/Request^110px~Start Date^80px~Finish Date^80px~Status^60px");
+            "~Type^55px~Comment/Request^110px~Date^80px~Status^60px");
           break;
 
         case 39:
@@ -652,7 +652,6 @@ public class EpsEditField
             {
               stEdit += workDaysHTML(iF, stExtraFieldName, stValue, nmCols, nmMaxBytes, stDisabled2, stProcess);	
             }
-              	
             if ((iDt == 20 || iDt == 8) && (iFlags & 1) != 0) // DATE ONLY or DATETIME - only if editable
             {
               stEdit += "\n<script language='JavaScript'>"
@@ -685,6 +684,7 @@ public class EpsEditField
     }
     return stEdit;
   }
+
   
   /* AS -- 19Oct2011 -- Issue # 59 */
   public String burdenFactorHTML(int iF,  String stExtraFieldName, String stValue, int nmCols, int nmMaxBytes, String stDisabled2, String stProcess)
@@ -1173,10 +1173,11 @@ public class EpsEditField
           stList = "0"; // Special case, all users deleted, browser won't send me the list
       }
       String[] aV = stList.split(",");
-      
+
       /* AS -- 29Sept2011 -- Issue #76*/
       stEdit += "<td align=center valign=top><b>AVAILABLE</b><br><select MULTIPLE SIZE=" + this.epsClient.epsUd.rsMyDiv.getInt("MaxRecords") + " name='f" + iF + "_list' id='f" + iF + "_list' style='width:300px' "
         + "onDblClick=\"moveOptions(document.form" + rsTable.getInt("nmTableId") + ".f" + iF + "_list, document.form" + rsTable.getInt("nmTableId") + ".f" + iF + "_selected);\">";
+      
       stEdit += stResult;
       String stNext = "";
       if (iMax < this.epsClient.epsUd.rsMyDiv.getInt("MaxRecords"))
@@ -1196,6 +1197,7 @@ public class EpsEditField
       //stEdit += "</td><td valign=top align=center><b>SELECTED USERS</b><br>";
       stEdit += "</td><td valign=top align=center><b>SELECTED</b><br>";
       stEdit += "<select MULTIPLE SIZE=" + this.epsClient.epsUd.rsMyDiv.getInt("MaxRecords") + " name='f" + iF + "_selected' id='f" + iF + "_selected' style='width:300px'>";
+      
       String stNames = "";
       for (int i = 0; i < aV.length; i++)
       {
@@ -1210,6 +1212,7 @@ public class EpsEditField
       }
 
       stEdit += "</select><br>";
+      
       /* AS -- 29Sept2011 -- Issue #5*/
       
       //stEdit += "<input type=submit name=userslect0  value='Save selected users'"
@@ -1224,6 +1227,69 @@ public class EpsEditField
     } catch (Exception e)
     {
       this.stError += "<BR>ERROR selectUsers " + e;
+    }
+    return stEdit;
+  }
+  
+  public String selectProjects(ResultSet rsTable, int reportID)
+  {
+    String stEdit = "<table border=0 cellpadding=2 bgcolor='#CCCCCC'>";
+    try
+    {
+      String iF = "projects";
+      String prjFilter = this.ebEnt.dbDyn.ExecuteSql1("select prjFilter from teb_customreport where RecId = " + reportID);
+      String[] prjArr = prjFilter.split(",");
+      String pIDs = "";
+      
+      stEdit += "<tr><td align=center valign=top><b>AVAILABLE PROJECTS</b><br><select MULTIPLE SIZE=" + this.epsClient.epsUd.rsMyDiv.getInt("MaxRecords") + " name='f" + iF + "_list' id='f" + iF + "_list' style='width:300px' "
+        + "onDblClick=\"moveOptions(document.form" + rsTable.getInt("nmTableId") + ".f" + iF + "_list, document.form" + rsTable.getInt("nmTableId") + ".f" + iF + "_selected);\">";
+      //get projects that are not added yet
+      if(prjArr.length > 0){
+  	  	for(int i=0; i<prjArr.length; i++){
+  	  		if(!prjArr[i].equals(""))
+  	  			pIDs += "RecId <> " + prjArr[i] + " and ";
+  	   	}
+  	   	if(!pIDs.equals("")){
+  	   		pIDs = " where " + pIDs.substring(0, pIDs.length()-5);
+  	   	}
+  	  }
+      ResultSet stResult = this.ebEnt.dbDyn.ExecuteSql("select RecId, ProjectName from projects" + pIDs);
+      while(stResult.next()){
+    	  stEdit += "\n<option value=\"" + stResult.getString("RecId") + "\" >" + stResult.getString("ProjectName") + "</option>";
+      }
+      
+      stEdit += "</select>";
+      stEdit += "</td><td valign=middle align=center>";
+      stEdit += "\n<input type=button onclick=\"moveOptions(document.form" + rsTable.getInt("nmTableId") + ".f" + iF + "_list, document.form" + rsTable.getInt("nmTableId") + ".f" + iF + "_selected);\"  name=f" + iF + "_add  id=n" + iF + "_add  value='&gt;&gt; ADD'><br>&nbsp;<br>"
+        + "<input type=button onclick=\"moveOptions(document.form" + rsTable.getInt("nmTableId") + ".f" + iF + "_selected, document.form" + rsTable.getInt("nmTableId") + ".f" + iF + "_list);\"  name=f" + iF + "_remove id=n" + iF + "_remove  value='REMOVE &lt;&lt;'>";
+      stEdit += "</td><td valign=top align=center><b>SELECTED PROJECTS</b><br>";
+      stEdit += "<select MULTIPLE SIZE=" + this.epsClient.epsUd.rsMyDiv.getInt("MaxRecords") + " name='f" + iF + "_selected' id='f" + iF + "_selected' style='width:300px'>";
+      
+      //get previously added projects
+	  if(prjArr.length > 0){
+		pIDs = "";
+	  	for(int j=0; j<prjArr.length; j++){
+	  		if(!prjArr[j].equals(""))
+	  			pIDs += "RecId = " + prjArr[j] + " or ";
+	   	}
+	   	if(!pIDs.equals("")){
+	   		pIDs = " where " + pIDs.substring(0, pIDs.length()-4);
+	   		stResult = this.ebEnt.dbDyn.ExecuteSql("select RecId, ProjectName from projects" + pIDs);
+		    while(stResult.next()){
+		    	stEdit += "<option value=\"" + stResult.getString("RecId") + "\" >" + stResult.getString("ProjectName") + "</option>";
+		    }
+	   	}
+	  }
+
+      stEdit += "</select>";
+
+      stEdit += "</td></tr></table>";
+      if (this.stValidationMultiSel.length() > 0)
+        this.stValidationMultiSel += "~";
+      this.stValidationMultiSel += "f" + iF + "_selected";
+    } catch (Exception e)
+    {
+      this.stError += "<BR>ERROR selectProjects " + e;
     }
     return stEdit;
   }
@@ -1808,7 +1874,6 @@ public class EpsEditField
     {
       ResultSet rs = this.ebEnt.dbDyn.ExecuteSql("select * from Schedule where nmProjectId=" + stPk + " and nmBaseline=" + nmBaseline + " and RecId=" + stR);
       rs.last();
-      int iTemp = rs.getRow();
       rs.absolute(1);
       stReturn += fullSchTitle(rs, stPk, nmBaseline);
     } catch (Exception e)
@@ -1858,6 +1923,22 @@ public class EpsEditField
     return stReturn;
   }
 
+  public String fullReqTitle(String stR, String stPk, int nmBaseline)
+  {
+    String stReturn = "";
+    try
+    {
+      ResultSet rs = this.ebEnt.dbDyn.ExecuteSql("select * from Requirements where nmProjectId=" + stPk + " and nmBaseline=" + nmBaseline + " and RecId=" + stR);
+      rs.last();
+      rs.absolute(1);
+      stReturn += fullReqTitle(rs, stPk, nmBaseline);
+    } catch (Exception e)
+    {
+      this.stError += "<br>ERROR fullReqTitle [" + stR + "] " + e;
+    }
+    return stReturn;
+  }
+  
   public String fullReqTitle(ResultSet rs, String stPk, int nmBaseline)
   {
     String stReturn = "";
@@ -2073,7 +2154,7 @@ public class EpsEditField
     return stReturn;
   }
 
-  private String getMulitUsers(String stChild, int iF, String stExtraFieldName, String stValue, String stLc)
+  public String getMulitUsers(String stChild, int iF, String stExtraFieldName, String stValue, String stLc)
   {
     String stEdit = "";
     int nmRows = 0;

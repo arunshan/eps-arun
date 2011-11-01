@@ -1,0 +1,61 @@
+UPDATE `ebeps01`.`x25user` set stEMail='xancar1986@gmail.com', stPassword=password('ABCs1234'),dtPasswordChangeDate=sysdate() where RecID=1;
+
+UPDATE `ebeps01`.`x25user` set stEMail='devonkim@yahoo.com', stPassword=password('ABCs1234') ,dtPasswordChangeDate=sysdate() where recid=3 ;
+
+UPDATE `ebeps01`.`x25user` set stPassword=password('ABCs1234') ,dtPasswordChangeDate=sysdate() where recid=6 ;
+
+UPDATE `ebeps01`.`x25user` set stPassword=password('ABCs1234') ,dtPasswordChangeDate=sysdate() where recid=5 ;
+
+
+Update `dbeps01`.`users` set Firstname='Devon', Lastname='Kim' where nmUserId=3;
+
+
+Update `ebeps01`.`x25refcontent` SET stContent='<div id="container">
+  <div id="header">
+  <table border=0 valign=top width="100%" bgcolor="white" ><tr>
+  <td align=left valign=top width=220><a href="http://eppora.com/"><img src="./images/EPS 335_300dpi.png" width=200 border=0></a></td>
+  <td width=600 align=left valign=middle class=pagetitle>
+<img src="./images/EPPORA logov2.png" width=150 border=0 style="vertical-align:text-top;"><center> ~~stPageTitle|~
+  </center></td>
+  <td width=250>~~stWelcome|~</td>
+  </tr></table>
+  </div>
+  <div id="menu">
+  <ul id="topNavItems"> ' where nmContentId=2;
+
+UPDATE `dbeps01`.`teb_fields` SET stLabel='Importance' where nmForeignId=364;
+
+UPDATE `dbeps01`.`teb_fields` set nmDataType=1 where nmForeignId=24;
+
+UPDATE `dbeps01`.`teb_fields` set nmDataType=1 where nmForeignId=25;
+
+UPDATE `dbeps01`.`teb_fields` set stLabel = 'Title' where nmForeignId=258;
+
+UPDATE `dbeps01`.`teb_fields` set stLabel = 'Description' where nmForeignId=224;
+
+UPDATE `ebeps01`.`x25user` set stEMail='xancar1986@gmail.com', stPassword=password('ABCs1234'),dtPasswordChangeDate=sysdate() where RecID=1;
+
+UPDATE `ebeps01`.`x25user` set stEMail='devonkim@yahoo.com', stPassword=password('ABCs1234') ,dtPasswordChangeDate=sysdate() where recid=3 ;
+
+UPDATE `ebeps01`.`x25user` set stPassword=password('ABCs1234') ,dtPasswordChangeDate=sysdate() where recid=6 ;
+
+UPDATE `ebeps01`.`x25user` set stPassword=password('ABCs1234') ,dtPasswordChangeDate=sysdate() where recid=5 ;
+
+
+Update `dbeps01`.`users` set Firstname='Devon', Lastname='Kim' where nmUserId=3;
+
+delete from `dbeps01`.`teb_fields` where nmForeignId=31;
+
+delete from `dbeps01`.`teb_fields` where nmForeignId=926;
+
+insert into dbeps01.teb_reportcolumns (nmCustomReportId,nmFieldId,stShow,nmOrder,nmWidth) values
+(9,116,'Y',6,64);
+
+insert into dbeps01.teb_reportcolumns (nmCustomReportId, nmFieldId, stShow, nmOrder,nmWidth) values (31,2,'Y',12,10);
+
+insert into dbeps01.teb_reportcolumns (nmCustomReportId, nmFieldId, stShow, nmOrder,nmWidth) values (49,2,'Y',12,10);
+
+update dbeps01.teb_fields set stLabel='Division' where nmForeignId=42;
+
+
+

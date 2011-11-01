@@ -41,6 +41,7 @@ public class EpsController extends HttpServlet
         // SkinId=1, Language=26 English
         // figure out the db
         String stDb = request.getRequestURI().replace("index.jsp", "").replace("/", "");
+        
         if (stDb.length() == 3)
           stDb += "01";
 

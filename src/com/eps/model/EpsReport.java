@@ -5,6 +5,15 @@
 package com.eps.model;
 
 import com.ederbase.model.EbEnterprise;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.ProtocolException;
+import java.net.URL;
 import java.sql.ResultSet;
 import java.text.DecimalFormat;
 import java.util.Vector;
@@ -114,7 +123,7 @@ public class EpsReport
   {
     return this.stError;
   }
-
+  
   /* AS -- 2Oct2011 -- Issue#9*/
   public String epsShowSavedReports(ResultSet rsTable)
   {
@@ -123,7 +132,8 @@ public class EpsReport
     {
       // todo
     	/* AS -- 29Sept2011 -- Issue #9*/
-      String stSql = "select r.*,cr.stReportType,cr.stReportName from teb_reports r, teb_customreport cr where r.nmCustomReportId=cr.RecId and cr.stReportType="+ rsTable.getInt("nmTableId") +" order by r.RecId Desc";
+      //String stSql = "select r.*,cr.stReportType,cr.stReportName from teb_reports r, teb_customreport cr where r.nmCustomReportId=cr.RecId order by r.RecId Desc";
+    	String stSql = "select r.*,cr.stReportType,cr.stReportName from teb_reports r, teb_customreport cr where r.nmCustomReportId=cr.RecId and cr.stReportType="+ rsTable.getInt("nmTableId") +" order by r.RecId Desc";
       ResultSet rs = epsUd.ebEnt.dbDyn.ExecuteSql(stSql);
       if (rs != null)
       {
@@ -180,7 +190,7 @@ public class EpsReport
         rs.absolute(1);
         String[] aLines = rs.getString("stReportRaw").split("\\|", -1);
         //stPageTitle = rs.getString("stReportType") + " Report &nbsp;&nbsp;&nbsp; Title: <b>" + rs.getString("stReportName") + "</b> Run: " + rs.getString("dtRun");
-        stPageTitle = "<b>" + rs.getString("stReportName") + " </b>&nbsp;&nbsp;<i>Run: " + rs.getString("dtRun") + "</i>";
+        stPageTitle = "<b>" + rs.getString("stReportName") + "</b> &nbsp;&nbsp;<i>Run: " + rs.getString("dtRun") + "</i>";
         stReturn += "<center><table border=1>";
         String[] aTdClass = null;
         ResultSet rs2 = ebEnt.dbDyn.ExecuteSql("select * from teb_reportcolumns rc,teb_fields f, teb_epsfields ef"
@@ -206,15 +216,23 @@ public class EpsReport
               if (aTdClass[iF].length() <= 0)
               {
             	  /* AS -- 19Oct2011 -- Issue # 55 */
-                if (rs2.getInt("nmDataType") == 1  || rs2.getInt("nmDataType") == 5 || rs2.getInt("nmDataType") == 31)
-                {
-                  if (rs2.getString("stHandler").length() <= 0)
-                    aTdClass[iF] = " align=right ";
-                }
+            	  /*if (rs2.getInt("nmDataType") == 1 || rs2.getInt("nmDataType") == 5 || rs2.getInt("nmDataType") == 31)
+                  {
+                    if (rs2.getString("stHandler").length() <= 0)
+                      aTdClass[iF] = " align=right ";
+                  }*/
+                  if (rs2.getInt("nmDataType") == 1  || rs2.getInt("nmDataType") == 5 || rs2.getInt("nmDataType") == 31)
+                  {
+                    if (rs2.getString("stHandler").length() <= 0)
+                      aTdClass[iF] = " align=right ";
+                  }
+                
               }
             }
             /* AS -- 19Oct2011 -- Issue # 55 */
+            //stReturn += "<tr><th colspan=" + (aFields.length - 1) + " align=center>" + stPageTitle + "</th></tr>";
             stReturn += "<tr><th colspan=" + (aFields.length - 1) + " align=center STYLE='font-size: 18px; background-color: yellow;'>" + stPageTitle + "</th></tr>";
+            
           }
           stReturn += "<tr>";
           //~Project Name^123~Synergy With Organization^1088~Synergy With Other Projects^1089~Total Ranking Score^998|~EPS Office Building~27~24~3370|~EPPORA Training Sessions~21~21~3179|~EPPORA SQL Server Conversion Suite~18~18~2950|~EPPORA Source Analysis~15~15~2749|~EPPORA Resource Modeling~12~12~2546|~EPPORA Project Templates~9~9~2365|~EPPORA Project Manager Scheduling Enhancer~24~27~2192|~EPPORA Primavera Conversion Suite~6~6~2022|~EPPORA Performance Enhancer~3~3~1871|~EPPORA Oracle Conversion Suite~6~6~1833|~EPPORA Online Training~9~9~1761|~EPPORA Niku Workbench Conversion Suite~12~12~1655|~EPPORA MySQL Conversion Suite~15~15~1511|~EPPORA Microsoft Project Conversion Suite~30~0~1337|~EPPORA Implementation~27~27~1148|~EPPORA Estimation Analyzer~18~18~852|~EPPORA DB2 Conversion Suite~21~21~650|~EPPORA Comprehensive Project Test Tool~24~24~418|~EPPORA Automated Test Suite~18~21~156|
@@ -224,7 +242,9 @@ public class EpsReport
             {
               String[] aV = aFields[iF].trim().split("\\^", -1);
               /* AS -- 19Oct2011 -- Issue # 55 */
+              //stReturn += "<th>" + aV[0] + "</td>";
               stReturn += "<th STYLE='font-size: 12px; background-color:yellow;'>" + aV[0] + "</td>";
+              
             } else
               stReturn += "<td " + aTdClass[iF] + ">" + aFields[iF].replace("`", "<br>") + "</td>";
           }
@@ -258,7 +278,6 @@ public class EpsReport
     String stSql = "";
     int iF = 0;
     int giSubmitId = 0;
-    //nmCustomReportId = -1;
     try
     {
       String stSubmit = epsUd.ebEnt.ebUd.request.getParameter("savedata");
@@ -308,10 +327,14 @@ public class EpsReport
           break;
         case 56: // Division
         	/* AS -- 19Oct2011 -- Issue # 61 */
-          stSql = "select * from teb_fields f, teb_epsfields ef left join teb_reportcolumns rc"
+        	/*stSql = "select * from teb_fields f, teb_epsfields ef left join teb_reportcolumns rc"
             + " on ef.nmForeignId=rc.nmFieldId and rc.nmCustomReportId = " + nmCustomReportId
-            + " where f.nmForeignId=ef.nmForeignId and f.nmTabId in (10) and ((nmFlags & 0x400) = 0 or nmFlags = 1024) "
-            + " and rc.nmFieldId is null and f.nmForeignID not in ( 0 ) order by f.stLabel";
+            + " where f.nmForeignId=ef.nmForeignId and f.nmTabId in (10) and (nmFlags & 0x400) = 0"
+            + " and rc.nmFieldId is null and f.nmForeignID not in ( 0 ) order by f.stLabel";*/
+            stSql = "select * from teb_fields f, teb_epsfields ef left join teb_reportcolumns rc"
+              + " on ef.nmForeignId=rc.nmFieldId and rc.nmCustomReportId = " + nmCustomReportId
+              + " where f.nmForeignId=ef.nmForeignId and f.nmTabId in (10) and ((nmFlags & 0x400) = 0 or nmFlags = 1024) "
+              + " and rc.nmFieldId is null and f.nmForeignID not in ( 0 ) order by f.stLabel";
           break;
         case 57: // Inventory
           stSql = "select * from teb_fields f, teb_epsfields ef left join teb_reportcolumns rc"
@@ -464,10 +487,29 @@ public class EpsReport
         epsUd.ebEnt.dbDyn.ExecuteUpdate("update teb_reportcolumns set nmOrder = " + iNew
           + " where nmFieldId = " + giSubmitId + " and nmCustomReportId=" + nmCustomReportId);
       }
-
-      rsF = epsUd.ebEnt.dbDyn.ExecuteSql("select rc.*,f.stLabel from teb_reportcolumns rc, teb_fields f "
-        + " where rc.nmFieldId=f.nmForeignId"
-        + " and rc.nmCustomReportId=" + nmCustomReportId + " order by rc.stShow desc, rc.nmOrder asc ");
+      
+      switch (rsTable.getInt("nmTableId")){
+  		case 76:	//project requirements omit project name
+  			 rsF = epsUd.ebEnt.dbDyn.ExecuteSql("select rc.*,f.stLabel from teb_reportcolumns rc, teb_fields f "
+		        + " where rc.nmFieldId=f.nmForeignId"
+		        + " and rc.nmCustomReportId=" + nmCustomReportId + " and rc.nmFieldId <> 116 order by rc.stShow desc, rc.nmOrder asc ");
+  			break;
+  		case 78:	//project requirements analysis omit project name
+ 			 rsF = epsUd.ebEnt.dbDyn.ExecuteSql("select rc.*,f.stLabel from teb_reportcolumns rc, teb_fields f "
+		        + " where rc.nmFieldId=f.nmForeignId"
+		        + " and rc.nmCustomReportId=" + nmCustomReportId + " and rc.nmFieldId <> 116 order by rc.stShow desc, rc.nmOrder asc ");
+ 			break;
+  		case 81:	//project schedule omit project name
+  			rsF = epsUd.ebEnt.dbDyn.ExecuteSql("select rc.*,f.stLabel from teb_reportcolumns rc, teb_fields f "
+		        + " where rc.nmFieldId=f.nmForeignId"
+		        + " and rc.nmCustomReportId=" + nmCustomReportId + " and rc.nmFieldId <> 116 order by rc.stShow desc, rc.nmOrder asc ");
+  			break;
+  		default:
+  			 rsF = epsUd.ebEnt.dbDyn.ExecuteSql("select rc.*,f.stLabel from teb_reportcolumns rc, teb_fields f "
+		        + " where rc.nmFieldId=f.nmForeignId"
+		        + " and rc.nmCustomReportId=" + nmCustomReportId + " order by rc.stShow desc, rc.nmOrder asc ");
+      }
+     
       rsF.last();
       iMaxF = rsF.getRow();
 
@@ -482,6 +524,7 @@ public class EpsReport
             stShow = "N";
           else
             stShow = "Y";
+          
           stSql = "update teb_reportcolumns set stShow = \"" + stShow + "\""
             + ",stClass = \"" + epsUd.ebEnt.ebUd.request.getParameter("class_" + nmFieldId) + "\""
             + ",stCustom = \"" + epsUd.ebEnt.ebUd.request.getParameter("custom_" + nmFieldId) + "\""
@@ -502,25 +545,22 @@ public class EpsReport
               if (stPopupError.length() <= 0)
               {
                 String stFilter = this.epsUd.userSearch(rsTable, "Save");
-                /*String stSql1 = "insert into teb_customreport (stReportName,stFilter,stReportCss) values ('"+
-                		epsUd.ebEnt.ebUd.request.getParameter("stReportName")+"',"+
-                		epsUd.ebEnt.dbDyn.fmtDbString(stFilter)+","+
-                		 epsUd.ebEnt.dbDyn.fmtDbString(epsUd.ebEnt.ebUd.request.getParameter("stReportCss"))+")";*/
-                		
-                		
-                		/*"update teb_customreport set "
-                        + " stReportName = \"" + epsUd.ebEnt.ebUd.request.getParameter("stReportName") + "\""
-                        + ",stFilter = " + epsUd.ebEnt.dbDyn.fmtDbString(stFilter)
-                        + ",stReportCss = " + epsUd.ebEnt.dbDyn.fmtDbString(epsUd.ebEnt.ebUd.request.getParameter("stReportCss"))
-                        + " where RecId = " + nmCustomReportId;*/
                 
+                //update project filters
+                String[] aV = epsUd.ebEnt.ebUd.request.getParameterValues("fprojects_selected");
+                String prjFilter = "";
+                if(aV != null && aV.length > 0){
+	                for(int i=0; i<aV.length; i++){
+	                	prjFilter += aV[i]+",";
+	                }
+	                prjFilter = prjFilter.substring(0, prjFilter.length() - 1);
+                }
                 epsUd.ebEnt.dbDyn.ExecuteUpdate("update teb_customreport set "
                   + " stReportName = \"" + epsUd.ebEnt.ebUd.request.getParameter("stReportName") + "\""
                   + ",stFilter = " + epsUd.ebEnt.dbDyn.fmtDbString(stFilter)
                   + ",stReportCss = " + epsUd.ebEnt.dbDyn.fmtDbString(epsUd.ebEnt.ebUd.request.getParameter("stReportCss"))
+                  + ",prjFilter = " + epsUd.ebEnt.dbDyn.fmtDbString(prjFilter)
                   + " where RecId = " + nmCustomReportId);
-                
-                //epsUd.ebEnt.dbDyn.ExecuteUpdate(stSql1);
                 epsUd.ebEnt.ebUd.setRedirect("./?stAction=reports&t=" + rsTable.getString("nmTableId"));
                 return ""; //----------------------------->
               }
@@ -532,9 +572,28 @@ public class EpsReport
             return "";
           }
         }
-        rsF = epsUd.ebEnt.dbDyn.ExecuteSql("select rc.*,f.stLabel from teb_reportcolumns rc, teb_fields f "
-          + " where rc.nmFieldId=f.nmForeignId"
-          + " and rc.nmCustomReportId=" + nmCustomReportId + " order by rc.stShow desc, rc.nmOrder asc ");
+        
+        switch (rsTable.getInt("nmTableId")){
+        	case 76:	//project requirements omit project name
+        		rsF = epsUd.ebEnt.dbDyn.ExecuteSql("select rc.*,f.stLabel from teb_reportcolumns rc, teb_fields f "
+  		          + " where rc.nmFieldId=f.nmForeignId"
+  		          + " and rc.nmCustomReportId=" + nmCustomReportId + " and rc.nmFieldId != 116 order by rc.stShow desc, rc.nmOrder asc ");
+        		break;
+        	case 78:	//project requirements analysis omit project name
+    			 rsF = epsUd.ebEnt.dbDyn.ExecuteSql("select rc.*,f.stLabel from teb_reportcolumns rc, teb_fields f "
+   		        + " where rc.nmFieldId=f.nmForeignId"
+   		        + " and rc.nmCustomReportId=" + nmCustomReportId + " and rc.nmFieldId <> 116 order by rc.stShow desc, rc.nmOrder asc ");
+    			break;
+        	case 81:	//project schedule omit project name
+      			rsF = epsUd.ebEnt.dbDyn.ExecuteSql("select rc.*,f.stLabel from teb_reportcolumns rc, teb_fields f "
+    		        + " where rc.nmFieldId=f.nmForeignId"
+    		        + " and rc.nmCustomReportId=" + nmCustomReportId + " and rc.nmFieldId <> 116 order by rc.stShow desc, rc.nmOrder asc ");
+      			break;
+        	default: 
+        		rsF = epsUd.ebEnt.dbDyn.ExecuteSql("select rc.*,f.stLabel from teb_reportcolumns rc, teb_fields f "
+		          + " where rc.nmFieldId=f.nmForeignId"
+		          + " and rc.nmCustomReportId=" + nmCustomReportId + " order by rc.stShow desc, rc.nmOrder asc ");
+        }
       }
 
       stReturn = "\n</form><form method=post name='form" + rsTable.getInt("nmTableId") + "' id='form" + rsTable.getInt("nmTableId") + "'>"
@@ -549,6 +608,7 @@ public class EpsReport
       }
       stReturn += "<br/>&nbsp;"
         + "<font color=red>" + stPopupError + "</font><br/><table border=1 style=\"background-color:white\">";
+      /* AS -- 19Oct2011 -- Issue # 64 */
       stReturn += "<tr><th>Order</th><th align=left>Field</th><th>Show <input type=checkbox onclick='checkAllShows(this);' /></th>";
       if (nmCustomReportId > 3)
         stReturn += "<th>CSS Format</td>";
@@ -557,12 +617,13 @@ public class EpsReport
       stReturn += "<th>Short Label</th></tr>";
 
       String stChecked = "";
+      /* AS -- 19Oct2011 -- Issue # 64 */
       Vector<Integer> vecshow = new Vector<Integer>();
       for (iF = 1; iF <= iMaxF; iF++)
       {
         rsF.absolute(iF);
         int nmFieldId = rsF.getInt("nmFieldId");
-
+    
         stSql = "update teb_reportcolumns set nmOrder= " + iF
           + " where nmCustomReportId=" + nmCustomReportId + " and nmFieldId=\"" + nmFieldId + "\"";
         epsUd.ebEnt.dbDyn.ExecuteUpdate(stSql); // Just for safety sakes.  Should be ok though.
@@ -579,7 +640,8 @@ public class EpsReport
         {
           stChecked = "";
         }
-        stReturn += "<td align=center><input type=checkbox id=show_" + nmFieldId + "  name=show_" + nmFieldId + " value=" + nmFieldId + " " + stChecked + "></td>";
+        stReturn += "<td align=center><input type=checkbox id=show_"+ nmFieldId +" name=show_" + nmFieldId + " value=" + nmFieldId + " " + stChecked + "></td>";
+        /* AS -- 19Oct2011 -- Issue # 64 */
         vecshow.add(nmFieldId);
         if (nmCustomReportId <= 3)
           stReturn += "<td align=left><input type=text name=width_" + nmFieldId + " value=\"" + epsUd.ebEnt.ebUd.getMyDb("width_" + nmFieldId, rsF, "nmWidth") + "\" size=3 style=\"text-align:right\" ></td>";
@@ -591,6 +653,7 @@ public class EpsReport
       }
       // Special Report Handler for FILTERS
       stReturn += "</td></tr></table>";
+      
       /* Start of Change AS -- 19Oct2011 -- Issue # 64 */
       String strjsbuilder = "";
       strjsbuilder += "<script language='javascript'>";
@@ -609,7 +672,6 @@ public class EpsReport
       
       /* End of Change AS -- 19Oct2011 -- Issue # 64 */
       
-    		  
       String stFilter = epsUd.ebEnt.dbDyn.ExecuteSql1("select stFilter from teb_customreport where RecId=" + nmCustomReportId);
       if (stFilter == null || stFilter.trim().length() <= 0)
         stFilter = "";
@@ -636,6 +698,22 @@ public class EpsReport
         case 89: // Users
           stReturn += "<br>&nbsp;<br>" + this.epsUd.userSearch(rsTable, stFilter);
           break;
+        case 81: // Project Schedule users
+          stReturn += this.epsUd.epsEf.selectProjects(rsTable, nmCustomReportId);
+          stReturn += "<br>&nbsp;<br>" + this.epsUd.userSearch(rsTable, stFilter);
+          break;
+        case 76: //Project Requirements project filter
+          stReturn += this.epsUd.epsEf.selectProjects(rsTable, nmCustomReportId);
+          break;
+        case 78: //Project Requirements Analysis project filter
+            stReturn += this.epsUd.epsEf.selectProjects(rsTable, nmCustomReportId);
+            break;
+        case 72: //Projects Report project filter
+          stReturn += this.epsUd.epsEf.selectProjects(rsTable, nmCustomReportId);
+          break;
+        case 83: //Project schedule analysis filter
+          stReturn += this.epsUd.epsEf.selectProjects(rsTable, nmCustomReportId);
+          break;
       }
       String stCss = epsUd.ebEnt.dbDyn.ExecuteSql1("select stReportCss from teb_customreport where RecId=" + nmCustomReportId);
       if (stCss == null || stCss.trim().length() <= 0 && !stCss.equals("null"))
@@ -646,28 +724,37 @@ public class EpsReport
         stReturn += "<tr><th valign=top>Cascading<BR>Style<br>Sheet<br>(CSS)</td><td valign=top><textarea name=stReportCss rows=10 cols=100>"
           + stCss + "</textarea></td></tr>";
       
-      //Division Filter
-      
-     /* stReturn += "<tr><td class=l1td>Divison: </td><td class=l1td><select name=nmDiv size=8 multiple>";
-      ResultSet rsDiv = this.ebEnt.dbDyn.ExecuteSql("select * from teb_division order by stDivisionName");
-      rsDiv.last();
-      int iMaxDiv = rsDiv.getRow();
-      stReturn += this.ebEnt.ebUd.addOption3("All", ",0,", stDivList);
-      for (int iL = 1; iL
-        <= iMaxDiv; iL++)
-      {
-        rsDiv.absolute(iL);
-        stReturn += this.ebEnt.ebUd.addOption3(rsDiv.getString("stDivisionName"), "," + rsDiv.getString("nmDivision") + ",", stDivList);
+      if(rsTable.getInt("nmTableId") == 76){		//project requirement submit
+    	  stReturn += "<tr><td align=center colspan=2>"
+	        + "<input type=submit name=savedata value='Save' onclick='selectAllOptions(document.getElementById(\"fprojects_selected\"))'>&nbsp;&nbsp;&nbsp;"
+	        + "<input type=submit name=savedata value='Cancel'>"
+	        + "</td></tr></table>";
+      }else if(rsTable.getInt("nmTableId") == 81){		//project schedule submit
+    	  stReturn += "<tr><td align=center colspan=2>"
+    		+ "<input type=submit name=savedata value='Save' onclick='selectAllOptions(document.getElementById(\"fprojects_selected\"))'>&nbsp;&nbsp;&nbsp;"
+	        + "<input type=submit name=savedata value='Cancel'>"
+	        + "</td></tr></table>";
+	  }else if(rsTable.getInt("nmTableId") == 72){		//projects report submit
+    	  stReturn += "<tr><td align=center colspan=2>"
+      		+ "<input type=submit name=savedata value='Save' onclick='selectAllOptions(document.getElementById(\"fprojects_selected\"))'>&nbsp;&nbsp;&nbsp;"
+  	        + "<input type=submit name=savedata value='Cancel'>"
+  	        + "</td></tr></table>";
+  	  }else if(rsTable.getInt("nmTableId") == 78){		//project requirement analysis report submit
+    	  stReturn += "<tr><td align=center colspan=2>"
+    		+ "<input type=submit name=savedata value='Save' onclick='selectAllOptions(document.getElementById(\"fprojects_selected\"))'>&nbsp;&nbsp;&nbsp;"
+	        + "<input type=submit name=savedata value='Cancel'>"
+	        + "</td></tr></table>";
+	  }else if(rsTable.getInt("nmTableId") == 83){		//projects schedule analysis submit
+  		  stReturn += "<tr><td align=center colspan=2>"
+    		+ "<input type=submit name=savedata value='Save' onclick='selectAllOptions(document.getElementById(\"fprojects_selected\"))'>&nbsp;&nbsp;&nbsp;"
+	        + "<input type=submit name=savedata value='Cancel'>"
+	        + "</td></tr></table>";
+	  }else{
+		  stReturn += "<tr><td align=center colspan=2>"
+	        + "<input type=submit name=savedata value='Save'>&nbsp;&nbsp;&nbsp;"
+	        + "<input type=submit name=savedata value='Cancel'>"
+	        + "</td></tr></table>";  
       }
-      stReturn += "</select></td></tr>";*/
-      
-      //close division filter
-      
-      
-      stReturn += "<tr><td align=center colspan=2>"
-        + "<input type=submit name=savedata value='Save'>&nbsp;&nbsp;&nbsp;"
-        + "<input type=submit name=savedata value='Cancel'>"
-        + "</td></tr></table>";
       
       stReturn += strjsbuilder;
       
@@ -717,13 +804,28 @@ public class EpsReport
         if (iMaxF <= 0)
           return customReportDesigner(rsTable); //--------------> Must slect fields
         String stFilter = epsUd.ebEnt.dbDyn.ExecuteSql1("select stFilter from teb_customreport where RecId=" + nmCustomReportId);
+        String prjFilter = epsUd.ebEnt.dbDyn.ExecuteSql1("select prjFilter from teb_customreport where RecId=" + nmCustomReportId);
+        String[] prjArr = null;
+        String pIDs = "";
         switch (rsTable.getInt("nmTableId"))
         {
           case 76: // Project Requirement
+        	//get filtered projects
+        	prjArr = prjFilter.split(",");
+        	if(prjArr != null && prjArr.length > 0){
+        		for(int i=0; i<prjArr.length; i++){
+        			if(!prjArr[i].equals(""))
+        				pIDs += "r.RecId = " + prjArr[i] + " or ";
+            	}
+            	if(!pIDs.equals("")){
+            		pIDs = " and (" + pIDs.substring(0, pIDs.length()-4) + ")";
+            	}
+        	}
+
             stSql = "select p.ProjectName,r.*, count(*) cnt, sum(l.nmPercent) nmPercent"
               + " from Projects p, Requirements r left join teb_link l"
               + " on l.nmLinkFlags=1 and r.nmProjectId=l.nmProjectId and r.nmBaseline=l.nmBaseline and r.RecId=l.nmFromId"
-              + " where r.nmProjectId=p.RecId and r.nmBaseline=p.CurrentBaseline"
+              + " where r.nmProjectId=p.RecId and r.nmBaseline=p.CurrentBaseline" + pIDs
               + "  group by p.ProjectName,r.RecId order by p.ProjectName,r.ReqId";
             rsR = this.epsUd.ebEnt.dbDyn.ExecuteSql(stSql);
             rsR.last();
@@ -740,7 +842,9 @@ public class EpsReport
             + " on l.nmLinkFlags=1 and s.nmProjectId=l.nmProjectId and s.nmBaseline=l.nmBaseline and s.RecId=l.nmFromId"
             + " where s.nmProjectId=p.RecId and s.nmBaseline=p.CurrentBaseline"
             + " group by p.ProjectName,s.RecId order by p.ProjectName,s.SchId";*/
-            stSql = "select p.ProjectName,s.* from Projects p, Schedule s"
+        	  
+        	/*
+        	stSql = "select p.ProjectName,s.* from Projects p, Schedule s"
               + " where s.nmProjectId=p.RecId and s.nmBaseline=p.CurrentBaseline"
               + " group by p.ProjectName,s.RecId order by p.ProjectName,s.SchId";
             rsR = this.epsUd.ebEnt.dbDyn.ExecuteSql(stSql);
@@ -750,6 +854,73 @@ public class EpsReport
             {
               rsR.absolute(iR);
               stReport += getReportFields(rsR, rsF, iMaxF) + "|";
+            }
+        	*/
+        	
+        	//get filtered projects
+          	prjArr = prjFilter.split(",");
+          	if(prjArr != null && prjArr.length > 0){
+          		for(int i=0; i<prjArr.length; i++){
+          			if(!prjArr[i].equals(""))
+          				pIDs += "p.RecId = " + prjArr[i] + " or ";
+              	}
+              	if(!pIDs.equals("")){
+              		pIDs = " and (" + pIDs.substring(0, pIDs.length()-4) + ")";
+              	}
+          	}
+            
+        	//get users from filter
+            if (stFilter != null && stFilter.length() > 7)
+            { //128^,3,,4,,6,^,3,,1,^full^^beg
+              String[] aV = stFilter.split("\\^", -1);
+              int nmType = Integer.parseInt(aV[0]);
+              stSql = this.epsUd.makeUserSql(nmType, aV[1], aV[2], aV[3], aV[4], aV[5]);
+            } else
+            {
+              stSql = this.epsUd.makeUserSql(0xFFFF, ",0", ",0,", "full", "", "beg"); // Do all
+            }
+            stSql += " order by LastName,FirstName,stEMail";
+            rsR = this.epsUd.ebEnt.dbDyn.ExecuteSql(stSql);
+            rsR.last();
+            iMaxR = rsR.getRow();
+            int[] userArr = new int[iMaxR];
+            String[] aFields = null;
+            String[] lbusrs = null;
+            String stlb = "";
+            
+            for (int iR = 1; iR <= iMaxR; iR++)
+            {
+              rsR.absolute(iR);
+              userArr[iR-1] = rsR.getInt("nmUserId"); 
+
+            }
+            
+            //get labor category field from all tasks so we can parse users
+        	stSql = "select p.ProjectName,s.* from Projects p, Schedule s"
+              + " where s.nmProjectId=p.RecId and s.nmBaseline=p.CurrentBaseline" + pIDs
+              + " group by p.ProjectName,s.RecId order by p.ProjectName,s.SchId";
+            rsR = this.epsUd.ebEnt.dbDyn.ExecuteSql(stSql);
+            rsR.last();
+            iMaxR = rsR.getRow();
+            for (int iR = 1; iR <= iMaxR; iR++)
+            {
+              rsR.absolute(iR);
+              stlb = rsR.getString("SchLaborCategories");
+              if(!stlb.equals("")){
+            	  aFields = stlb.split("~", -1);
+            	  if(!aFields[3].equals("")){
+	            	  lbusrs = aFields[3].split(",");
+	            	  for(int j=0; j<lbusrs.length; j++){
+	            		  //check if this user is filtered
+            	          for (int k = 0; k < userArr.length; k++)
+            	          {
+            	        	 if(Integer.parseInt(lbusrs[j]) == userArr[k]){
+            	        		 stReport += getReportFields(rsR, rsF, iMaxF) + "|";
+            	        	 }
+            	          }
+	            	  }
+            	  }
+              }
             }
             break;
           case 74: // Project Team Assignment
@@ -768,8 +939,20 @@ public class EpsReport
             }
             break;
           case 78: // Project Requirements Analysis
+        	//get filtered projects
+          	prjArr = prjFilter.split(",");
+          	if(prjArr != null && prjArr.length > 0){
+          		for(int i=0; i<prjArr.length; i++){
+          			if(!prjArr[i].equals(""))
+          				pIDs += "p.RecId = " + prjArr[i] + " or ";
+              	}
+              	if(!pIDs.equals("")){
+              		pIDs = " and (" + pIDs.substring(0, pIDs.length()-4) + ")";
+              	}
+          	}
+        	  
             stSql += "select p.ProjectName,r.*, '' as SuggestedMitigationStrategy from Requirements r, Projects p"
-              + " where r.nmProjectId=p.RecId and r.nmBaseline=p.CurrentBaseline"
+              + " where r.nmProjectId=p.RecId and r.nmBaseline=p.CurrentBaseline" + pIDs
               + " and r.nmD50Flags != 0 and (ReqFlags & 0x10) != 0"
               + " order by p.ProjectName, r.ReqId;";
             rsR = this.epsUd.ebEnt.dbDyn.ExecuteSql(stSql);
@@ -782,8 +965,20 @@ public class EpsReport
             }
             break;
           case 83: // Project Schedule Analysis
+        	//get filtered projects
+        	prjArr = prjFilter.split(",");
+        	if(prjArr != null && prjArr.length > 0){
+        		for(int i=0; i<prjArr.length; i++){
+        			if(!prjArr[i].equals(""))
+        				pIDs += "p.RecId = " + prjArr[i] + " or ";
+            	}
+            	if(!pIDs.equals("")){
+            		pIDs = " and (" + pIDs.substring(0, pIDs.length()-4) + ")";
+            	}
+        	}
+        	  
             stSql += "select p.ProjectName,s.*, '' as SuggestedMitigationStrategy from Schedule s, Projects p"
-              + " where s.nmProjectId=p.RecId and s.nmBaseline=p.CurrentBaseline"
+              + " where s.nmProjectId=p.RecId and s.nmBaseline=p.CurrentBaseline" + pIDs
               + " and s.nmD53Flags != 0 and (SchFlags & 0x10) != 0"
               + " order by p.ProjectName, s.SchId";
             rsR = this.epsUd.ebEnt.dbDyn.ExecuteSql(stSql);
@@ -810,9 +1005,9 @@ public class EpsReport
               }
               stSqlUser1 = stSqlUser1.replace("u.*,xu.stEMail,xu.nmPriviledge,xu.RecId", "u.nmUserId");
   
-        	/* End of Issue AS -- 12Oct2011 -- Issue # 43 */  
+        	/* End of Issue AS -- 12Oct2011 -- Issue # 43 */ 
             stSql += "SELECT u.FirstName,u.LastName,rlc.*,lc.LaborCategory FROM Users u, LaborCategory lc, teb_reflaborcategory rlc"
-              + " where u.nmUserId in (" + stSqlUser1 + ") and u.nmUserId=rlc.nmRefId and rlc.nmRefType=42 and rlc.nmLaborCategoryId=lc.nmLcId"
+              + " where u.nmUserId=rlc.nmRefId and rlc.nmRefType=42 and rlc.nmLaborCategoryId=lc.nmLcId"
               + " order by u.LastName,u.FirstName, lc.LaborCategory";
             rsR = this.epsUd.ebEnt.dbDyn.ExecuteSql(stSql);
             rsR.last();
@@ -852,8 +1047,20 @@ public class EpsReport
 
           //------------
           case 72: // Projets
+        	//get filtered projects
+        	prjArr = prjFilter.split(",");
+        	if(prjArr != null && prjArr.length > 0){
+        		for(int i=0; i<prjArr.length; i++){
+        			if(!prjArr[i].equals(""))
+        				pIDs += "p.RecId = " + prjArr[i] + " or ";
+            	}
+            	if(!pIDs.equals("")){
+            		pIDs = " where " + pIDs.substring(0, pIDs.length()-4);
+            	}
+        	}
+        	  
             getBudgetReport();
-            stSql += "SELECT * FROM Projects p order by p.ProjectName;";
+            stSql += "SELECT * FROM Projects p" + pIDs + " order by p.ProjectName;";
             rsR = this.epsUd.ebEnt.dbDyn.ExecuteSql(stSql);
             rsR.last();
             iMaxR = rsR.getRow();
@@ -897,7 +1104,8 @@ public class EpsReport
               
             }
             /* End of Issue AS -- 12Oct2011 -- Issue # 50 */
-            stSql += "SELECT * FROM Criteria c, teb_division d where c.nmDivision in (" + stDivList1 + ") and c.nmDivision = d.nmDivision order by stDivisionName,c.CriteriaName";
+            
+            stSql += "SELECT * FROM Criteria c, teb_division d where c.nmDivision = d.nmDivision order by stDivisionName,c.CriteriaName";
             rsR = this.epsUd.ebEnt.dbDyn.ExecuteSql(stSql);
             rsR.last();
             iMaxR = rsR.getRow();
@@ -909,24 +1117,7 @@ public class EpsReport
             break;
           case 56: // Division
             this.epsUd.epsEf.processUsersInDivision();
-            //stSql += "SELECT * FROM teb_division order by stDivisionName;";
-            stSql += "SELECT * FROM teb_division ";
-            if (stFilter != null && stFilter.length() > 7)
-            { //128^,3,,4,,6,^,3,,1,^full^^beg
-              String[] aV = stFilter.split("\\^", -1);
-              int nmType = Integer.parseInt(aV[0]);
-              //stSqlUser = this.epsUd.makeUserSql(nmType, aV[1], aV[2], aV[3], aV[4], aV[5]);
-              String stDivList = aV[2];
-              if (!stDivList.contains(",0,"))
-              {
-                stDivList = stDivList.replace(",,", ",");
-                stDivList = stDivList.substring(1, stDivList.length() - 1);
-                stSql += " where nmDivision in (" + stDivList + ") ";
-              }
-              
-            }
-            stSql += " order by stDivisionName;";
-            
+            stSql += "SELECT * FROM teb_division order by stDivisionName;";
             rsR = this.epsUd.ebEnt.dbDyn.ExecuteSql(stSql);
             rsR.last();
             iMaxR = rsR.getRow();
@@ -1037,7 +1228,30 @@ public class EpsReport
             for (int iR = 1; iR <= iMaxR; iR++)
             {
               rsR.absolute(iR);
-              stReport += getReportFields(rsR, rsF, iMaxF) + "|";
+              String val = getReportFields(rsR, rsF, iMaxF);
+              String[] fieldArr = val.split("~");
+              val = "";
+              //if money value, calculate exchange rate
+              for (int i=1; i<fieldArr.length; i++){
+	              if(fieldArr[i].contains("$")){
+	            	  //get exchange rate with id and division #
+	            	  int divid = this.epsUd.ebEnt.dbDyn.ExecuteSql1n("select nmDivision from teb_refdivision where nmRefType=42 and nmRefId=" + rsR.getString("nmUserId"));
+	                  ResultSet rs2 = this.epsUd.ebEnt.dbDyn.ExecuteSql("select stCurrency, stMoneySymbol from teb_division where nmDivision=" + divid);
+	                  rs2.last();
+	                
+	                  //calculate exchange rate if this is not in usd
+	                  if(!rs2.getString("stCurrency").equals("USD")){
+	                	  String rate = getExchangeRate("http://finance.yahoo.com/d/quotes.csv?e=.csv&f=sl1d1t1&s=USD"+rs2.getString("stCurrency")+"=X");
+	                	  String[] resp = rate.split(",");
+  
+  						  DecimalFormat df = new DecimalFormat(" #,###,###,##0.00");
+	                	  Double vald = Double.parseDouble(fieldArr[i].substring(2)) * Double.parseDouble(resp[1]);
+	                	  fieldArr[i] = rs2.getString("stMoneySymbol") + df.format(vald);
+	                  }
+	              }
+            	  val += "~" + fieldArr[i];
+              }
+              stReport += val + "|";
             }
             break;
           case 89: // Users
@@ -1147,6 +1361,7 @@ public class EpsReport
     String stValue = "";
     int iF = 0;
     int iCount = 0;
+    int stlvl = 0;
     try
     {
       for (iF = 1; iF <= iMaxF; iF++)
@@ -1155,6 +1370,10 @@ public class EpsReport
         stValue = rsR.getString(rsF.getString("stDbFieldName"));
         switch (rsF.getInt("nmDataType"))
         {
+        case 5: //cost effectiveness
+            abReturn.append("~");
+            abReturn.append(fmtReportData(stValue, rsF));
+            break;
           case 41: // LaborCateogries
             abReturn.append("~");
             abReturn.append(this.epsUd.epsEf.makeLaborCategories(rsF, stValue, 2));
@@ -1322,6 +1541,22 @@ public class EpsReport
                 abReturn.append("~");
                 abReturn.append(this.epsUd.epsEf.getPriviledgeTypes(rsR.getInt(rsF.getString("stDbFieldName"))));
                 break;
+              case 238:	//Requirement Title
+            	  //calculate level and indent
+            	  stlvl = rsR.getInt("ReqLevel");
+            	  for(int i=0; i<stlvl; i++)
+            		  stValue = "&nbsp;&nbsp;&nbsp;&nbsp;" + stValue;
+            	  abReturn.append("~");
+                  abReturn.append(fmtReportData(stValue, rsF));
+                  break;
+              case 258:	//Schedule Title
+            	  //calculate level and indent
+            	  stlvl = rsR.getInt("SchLevel");
+            	  for(int i=0; i<stlvl; i++)
+            		  stValue = "&nbsp;&nbsp;&nbsp;&nbsp;" + stValue;
+            	  abReturn.append("~");
+                  abReturn.append(fmtReportData(stValue, rsF));
+                  break;
               default:
                 abReturn.append("~");
                 abReturn.append(fmtReportData(stValue, rsF));
@@ -1368,7 +1603,6 @@ public class EpsReport
             //case 48: // LC:
             //  break;
             case 5:
-            	String tempstr=stValue;
               if (rsF.getString("stMask").length() > 0)
                 df = new DecimalFormat(rsF.getString("stMask"));
               else
@@ -1381,8 +1615,8 @@ public class EpsReport
                 df = new DecimalFormat(rsF.getString("stMask"));
               else{
             	  /* AS -- 27Sept2011 -- Issue #53 */
-                //df = new DecimalFormat("#,###,###,##0.0");
-                df = new DecimalFormat("#,###,###,##");
+                  //df = new DecimalFormat("#,###,###,##0.0");
+                  df = new DecimalFormat("#,###,###,##");
               }
               dValue = Double.parseDouble(stValue);
               abReturn.append(df.format(dValue));
@@ -1441,7 +1675,9 @@ public class EpsReport
     String stReturn = "";
     
     /* AS -- 2Oct2011 -- Issue#9*/
+    //stReturn += epsShowSavedReports();
     stReturn += epsShowSavedReports(rsTable);
+    
     return stReturn;
   }
 
@@ -1611,5 +1847,53 @@ public class EpsReport
     {
       this.stError += "<BR> ERROR getCostEffectiveness " + e;
     }
+  }
+  
+  public String getExchangeRate(String url){
+	HttpURLConnection connection = null;
+	OutputStreamWriter wr = null;
+	BufferedReader rd = null;
+	StringBuilder sb = null;
+	String line = null;
+	
+	URL serverAddress = null;
+
+	try {
+		serverAddress = new URL(url);
+		//set up out communications stuff
+		connection = null;
+		
+		//Set up the initial connection
+		connection = (HttpURLConnection)serverAddress.openConnection();
+		connection.setRequestMethod("GET");
+		connection.setDoOutput(true);
+		connection.setReadTimeout(10000);
+		
+		connection.connect();
+		
+		//get the output stream writer and write the output to the server
+		//not needed in this example
+		//wr = new OutputStreamWriter(connection.getOutputStream());
+		//wr.write("");
+		//wr.flush();
+		
+		//read the result from the server
+		rd = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+		sb = new StringBuilder();
+	
+		while ((line = rd.readLine()) != null)
+		{
+			sb.append(line + '\n');
+		}
+
+	} catch (MalformedURLException e) {
+		e.printStackTrace();
+	} catch (ProtocolException e) {
+		e.printStackTrace();
+	} catch (IOException e) {
+		e.printStackTrace();
+	}
+	
+	return sb.toString();
   }
 }

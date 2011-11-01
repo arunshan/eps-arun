@@ -136,7 +136,7 @@ function getPopupValue2 (nmFieldId,id,fAll,f0,f1,f2,f3,f4,f5,f6,stPk)
   return false;
 }
 
-/* AS -- 12Oct2011 -- Issue #41  */
+/* Start of Issue AS -- 12Oct2011 -- Issue #41  */
 
 function getPopupValue3 (nmFieldId,id,fAll,f0,f1,f2,f3,f4,f5,f6,stPk)
 {
@@ -167,6 +167,7 @@ function getPopupValue3 (nmFieldId,id,fAll,f0,f1,f2,f3,f4,f5,f6,stPk)
   return false;
 }
 
+/* End of Issue AS -- 12Oct2011 -- Issue #41  */
 
 //<input type=submit name=userslect3813 value=Select style='font-size:7pt;'
 //onClick='sendBack("Christian** Abary", 3813 );'>
@@ -180,7 +181,7 @@ function specialDay( stDay )
     window.opener.dialogF1.value = getTextValue( "stType" );
     window.opener.dialogF2.value = getTextValue( "stComment" );
     window.opener.dialogF3.value = stDay;
-    window.opener.dialogF5.value = "Pending";
+    window.opener.dialogF4.value = "Pending";
     if ( window.opener.dialogDisplayField.value.toString().length > 0 )
       window.opener.dialogDisplayField.value += "\n|";
     window.opener.dialogDisplayField.value += stValue;
@@ -188,7 +189,7 @@ function specialDay( stDay )
   window.close();
 }
 
-/* AS -- 12Oct2011 -- Issue # 41 */
+/* Start of Issue AS -- 12Oct2011 -- Issue # 41 */
 function getDateObject(dateString,dateSeperator)
 {
 //This function return a date object after accepting
@@ -214,8 +215,9 @@ cYear=curValue.substring(curPos+1,endPos);
 dtObject=new Date(cYear,cDate,cMonth);
 return dtObject;
 }
+/* End of Issue AS -- 12Oct2011 -- Issue # 41 */
 
-/* AS -- 12Oct2011 -- Issue # 41 */
+/* Start of Issue AS -- 12Oct2011 -- Issue # 41 */
 function specialDay1( stDay )
 {
   var stValue =  window.opener.dialogIdField + "~"+ getTextValue( "stType" );
@@ -243,6 +245,7 @@ function specialDay1( stDay )
   }
   window.close();
 }
+/* End of Issue AS -- 12Oct2011 -- Issue # 41 */
 
 
 function getTextValue( stField )
@@ -1457,6 +1460,13 @@ function deleteOption(theSel, theIndex)
   }
 }
 
+function selectAllOptions(theSel){
+  var idx;
+  for(idx=0; idx<theSel.length; idx++){
+	  theSel.options[idx].selected = true;
+  }
+}
+
 function moveDate( stDate, theSelTo)
 {
   var newOpt = new Option(stDate, stDate);
@@ -1825,27 +1835,17 @@ function specialDays(  iField )
     for ( i= 0 ; i < gaFields.length ; i++ )
     {
       stTemp = trim(gaFields[i]);
-     
       if ( stTemp.length > 0 )
       {
         aV = stTemp.split("^");
-        stEdit  += "<td><input DISABLED type=text name=\"field"+i+"_"+iR+"\" id=\"field"+i+"_"+iR+"\" value='' style='width:"+aV[1]+";'>";
-        if(i==3)
-	  	{
-	  	  stEdit += "<input type=image border=0 src='./common/img/cal.gif' alt='Special Day' class=imageStyle"
-	  	  + " onClick='return getPopupValue2("+gaValidation[iField][0]+","+iR+",this.form.f"+gaValidation[iField][0]+",this.form.field0_"+iR+",this.form.field1_"+iR+",this.form.field2_"+iR+",this.form.field3_"+iR+",this.form.field4_"+iR+",this.form.field5_"+iR+",this.form.field6_"+iR+","+giUser+");'>";
-	  	}
-	    if(i==4)
-		{
-		  stEdit += "<input type=image border=0 src='./common/img/cal.gif' alt='Special Day' class=imageStyle"
-		  + " onClick='return getPopupValue3("+gaValidation[iField][0]+","+iR+",this.form.f"+gaValidation[iField][0]+",this.form.field0_"+iR+",this.form.field1_"+iR+",this.form.field2_"+iR+",this.form.field3_"+iR+",this.form.field4_"+iR+",this.form.field5_"+iR+",this.form.field6_"+iR+","+giUser+");'>";
-		}
-        stEdit += "</td>";
+        stEdit  += "<td><input DISABLED type=text name=\"field"+i+"_"+iR+"\" id=\"field"+i+"_"+iR+"\" value='' style='width:"+aV[1]+";'></td>";
       }
-    	
-     
     }
-    stEdit += "</tr>";
+  
+    stEdit += "<td>";
+    stEdit += "<input type=image border=0 src='./common/img/cal.gif' alt='Special Day' class=imageStyle"
+    + " onClick='return getPopupValue2("+gaValidation[iField][0]+","+iR+",this.form.f"+gaValidation[iField][0]+",this.form.field0_"+iR+",this.form.field1_"+iR+",this.form.field2_"+iR+",this.form.field3_"+iR+",this.form.field4_"+iR+",this.form.field5_"+iR+",this.form.field6_"+iR+","+giUser+");'>";
+    stEdit += "</td></tr>";
   }
   stEdit += "</table>";
   SetTextValue( "div"+gaValidation[iField][0], stEdit );
@@ -2165,7 +2165,7 @@ function getSelectedValue( stField )
   return stValue;
 }
 
-/* AS -- 2Oct2011  -- Issue #18*/
+/* Start of Issue AS -- 2Oct2011  -- Issue #18*/
 function checkAll(nmType, elem)
 {
 	
@@ -2179,3 +2179,4 @@ function checkAll(nmType, elem)
 	    	nmType[i].checked = false;
 	}
 }
+/* End of Issue AS -- 2Oct2011  -- Issue #18*/

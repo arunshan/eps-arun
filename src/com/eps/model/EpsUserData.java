@@ -8,6 +8,7 @@ import com.ederbase.model.EbEnterprise;
 import com.ederbase.model.EbMail;
 import com.ederbase.model.EbStatic;
 import java.sql.ResultSet;
+import java.sql.Timestamp;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -100,8 +101,7 @@ public class EpsUserData
         this.ebEnt.ebUd.aLogin[1] = "0";
         Cookie userCookie2 = new Cookie("ut", this.ebEnt.ebUd.aLogin[1]);
         response.addCookie(userCookie2);
-        //this.ebEnt.ebUd.setRedirect("./");
-        this.ebEnt.ebUd.setRedirect("http://eppora.com");
+        this.ebEnt.ebUd.setRedirect("./");
       } else
       {
         stTemp = (String) this.ebEnt.ebUd.request.getParameter("Login");
@@ -828,8 +828,13 @@ public class EpsUserData
         } //good house keeping
         this.ebEnt.dbEnterprise.ExecuteUpdate("delete from X25User where RecId > 1000");
         //this.ebEnt.dbEnterprise.ExecuteUpdate("truncate table X25User");
+        //this.ebEnt.dbEnterprise.ExecuteUpdate("replace into X25User (RecId,stEMail,nmPriviledge,stPassword) values(1,'roberteder@myinfo.com',65535,password('test123'))");
         
         /* Start of change AS -- 26Sept2011 -- Issue#2 */
+        /*this.ebEnt.dbEnterprise.ExecuteUpdate("replace into X25User (RecId,stEMail,nmPriviledge,stPassword) values(2,'joeledfleiss@yahoo.com',65535,password('test123'))");
+        this.ebEnt.dbEnterprise.ExecuteUpdate("replace into X25User (RecId,stEMail,nmPriviledge,stPassword) values(3,'jf@eppora.com',65535,password('test123'))");
+        this.ebEnt.dbEnterprise.ExecuteUpdate("replace into X25User (RecId,stEMail,nmPriviledge,stPassword) values(5,'eob@eppora.com',65535,password('test123'))");
+        this.ebEnt.dbEnterprise.ExecuteUpdate("replace into X25User (RecId,stEMail,nmPriviledge,stPassword) values(6,'ll@eppora.com',65535,password('test123'))");*/
         this.ebEnt.dbEnterprise.ExecuteUpdate("replace into X25User (RecId,stEMail,nmPriviledge,stPassword) values(1,'xancar1986@gmail.com',65535,password('ABCs1234'))");
         this.ebEnt.dbEnterprise.ExecuteUpdate("replace into X25User (RecId,stEMail,nmPriviledge,stPassword) values(2,'joeledfleiss@yahoo.com',65535,password('ABCs1234'))");
         this.ebEnt.dbEnterprise.ExecuteUpdate("replace into X25User (RecId,stEMail,nmPriviledge,stPassword) values(3,'devonkim@yahoo.com',65535,password('ABCs1234'))");
@@ -837,15 +842,19 @@ public class EpsUserData
         this.ebEnt.dbEnterprise.ExecuteUpdate("replace into X25User (RecId,stEMail,nmPriviledge,stPassword) values(6,'ll@eppora.com',65535,password('ABCs1234'))");
         /* End of change AS -- 26Sept2011 -- Issue#2 */
         
+        
         this.ebEnt.dbDyn.ExecuteUpdate("truncate table teb_reflaborcategory");
         this.ebEnt.dbDyn.ExecuteUpdate("truncate table teb_refdivision");
         this.ebEnt.dbDyn.ExecuteUpdate("truncate table Users");
-        
         /* Start of change AS -- 26Sept2011 -- Issue#4 */
+        /*this.ebEnt.dbDyn.ExecuteUpdate("replace into Users (nmUserId,FirstName,LastName,Answers) values(1,'Rob','Eder','Tucker~Lakers~Blue')");
+        this.ebEnt.dbDyn.ExecuteUpdate("replace into Users (nmUserId,FirstName,LastName,Answers) values(2,'Joel','Fleiss','Tucker~Lakers~Blue')");
+        this.ebEnt.dbDyn.ExecuteUpdate("replace into Users (nmUserId,FirstName,LastName,Answers) values(3,'Joel E','Fleiss','Tucker~Lakers~Blue')");*/
         this.ebEnt.dbDyn.ExecuteUpdate("replace into Users (nmUserId,FirstName,LastName,Answers) values(1,'Arun','Shankar','Tucker~Lakers~Blue')");
         this.ebEnt.dbDyn.ExecuteUpdate("replace into Users (nmUserId,FirstName,LastName,Answers) values(2,'Joel','Fleiss','Tucker~Lakers~Blue')");
         this.ebEnt.dbDyn.ExecuteUpdate("replace into Users (nmUserId,FirstName,LastName,Answers) values(3,'Devon','Kim','Tucker~Lakers~Blue')");
         /* End of change AS -- 26Sept2011 -- Issue#4 */
+        
         this.ebEnt.dbDyn.ExecuteUpdate("replace into Users (nmUserId,FirstName,LastName,Answers) values(5,'','EOB','Tucker~Lakers~Blue')");
         this.ebEnt.dbDyn.ExecuteUpdate("replace into Users (nmUserId,FirstName,LastName,Answers) values(6,'Lawrence','Le Blanc','Tucker~Lakers~Blue')");
         this.ebEnt.dbDyn.ExecuteUpdate("update teb_fields set nmCols = nmMaxBytes  where nmCols=0 and nmTabId > 0 and nmMaxBytes > 0");
@@ -1643,23 +1652,31 @@ public class EpsUserData
             this.ebEnt.dbEnterprise.ExecuteUpdate("update X25Task set nmTaskFlag=2 where RecId=" + rs.getString("RecId"));
           } else
           {
-            iCount++;
-            stReturn += "<tr><td class=l1td>" + rs.getString("stTitle") + "</td><td class=l1td>";
-            if (rs.getString("stDescription") != null)
-            {
-              if (rs.getString("stDescription").length() > 200)
-              {
-                stReturn += "<a target=_blank href='./?stAction=admin&t=0&do=taskdetail&h=n&list=" + rs.getString("RecId") + "'>Details</a>";
-              } else
-              {
-                stReturn += rs.getString("stDescription");
-              }
-            } else
-            {
-              stReturn += "&nbsp;";
-            }
-            stReturn += "</td><td class=l1td>" + this.ebEnt.ebUd.fmtDateFromDb(rs.getString("dtStart"))
-              + "</td></tr>";
+        	//only trigger if project is approved
+        	String[] prjArr = rs.getString("stDescription").split(" - ");
+        	int approved = 0;
+        	if(!prjArr[0].equals(""))
+        		approved = this.ebEnt.dbDyn.ExecuteSql1n("select ProjectStatus from projects where ProjectName = '" + prjArr[0] + "'");
+        	
+        	if(approved == 1){
+	            iCount++;
+	            stReturn += "<tr><td class=l1td>" + rs.getString("stTitle") + "</td><td class=l1td>";
+	            if (rs.getString("stDescription") != null)
+	            {
+	              if (rs.getString("stDescription").length() > 200)
+	              {
+	                stReturn += "<a target=_blank href='./?stAction=admin&t=0&do=taskdetail&h=n&list=" + rs.getString("RecId") + "'>Details</a>";
+	              } else
+	              {
+	                stReturn += rs.getString("stDescription");
+	              }
+	            } else
+	            {
+	              stReturn += "&nbsp;";
+	            }
+	            stReturn += "</td><td class=l1td>" + this.ebEnt.ebUd.fmtDateFromDb(rs.getString("dtStart"))
+	              + "</td></tr>";
+        	}
           }
         }
       }
@@ -1688,6 +1705,7 @@ public class EpsUserData
     try
     {
       String stT = this.ebEnt.ebUd.request.getParameter("t");
+      String stA = this.ebEnt.ebUd.request.getParameter("a");
       if (stT == null)
       {
         String stC = this.ebEnt.ebUd.request.getParameter("c");
@@ -1730,7 +1748,10 @@ public class EpsUserData
             if (stTemp != null && stTemp.equals("19"))
             {
               stPageTitle += " Requirements</h1>";
-            } else if (stTemp != null && stTemp.equals("21"))
+            } else if (stTemp != null && stTemp.equals("21") && stA != null && stA.equals("editfull"))
+            {
+              stPageTitle += " Full Edit Schedule Tasks</h1>";
+            } else if(stTemp != null && stTemp.equals("21"))
             {
               stPageTitle += " Schedule Tasks</h1>";
             } else if (stTemp != null && stTemp.equals("34"))
@@ -2154,11 +2175,8 @@ public class EpsUserData
       {
         if (stDo.equals("specialday"))
         {
-          return specialDay(rsTable,"specialday"); //----------------------------------------->
-        }else if(stDo.equals("specialdayfd"))
-        {
-          return specialDay(rsTable,"specialdayfd");
-        }else if (stDo.equals("users"))
+          return specialDay(rsTable); //----------------------------------------->
+        } else if (stDo.equals("users"))
         {
           return adminUsers(rsTable, stDo); //----------------------------------------->
         } else if (stDo.equals("del"))
@@ -2854,7 +2872,7 @@ public class EpsUserData
     return stReturn;
   }
   
-  /* Start of change AS -- 4Oct2011 -- Issue#19*/
+ /* Start of change AS -- 4Oct2011 -- Issue#19*/
   
   public String divisionFilter(ResultSet rsTable, String stFilter)
   {
@@ -2898,6 +2916,8 @@ public class EpsUserData
     }
 	return stReturn;
   }
+
+  /* End of change AS -- 4Oct2011 -- Issue#19*/
   
   public String userSearch(ResultSet rsTable, String stFilter)
   {
@@ -3162,7 +3182,9 @@ public class EpsUserData
         stChecked = "";
       }
       /* AS -- 2Oct2011  -- Issue #18*/
+      //stReturn += "<input type='checkbox' name='nmType' value='" + iAll + "' " + stChecked + " /> ALL ";
       stReturn += "<input type='checkbox' name='nmType' value='" + iAll + "' " + stChecked + " onclick='checkAll(document.forms[1].nmType, this)'/> ALL ";
+      
     }
     if ((nmType & 1024) != 0)
     {
@@ -3172,7 +3194,9 @@ public class EpsUserData
       stChecked = "";
     }
     /* AS -- 2Oct2011  -- Issue #18*/
+    //stReturn += "<input type='checkbox' name='nmType' value='1024' " + stChecked + " /> Administrator ";
     stReturn += "<input type='checkbox' name='nmType' value='1024' " + stChecked + " onclick='checkAll(document.forms[1].nmType, this)'/> Administrator ";
+    
     if ((nmType & 128) != 0)
     {
       stChecked = " checked ";
@@ -3182,6 +3206,7 @@ public class EpsUserData
     }
     /* AS -- 2Oct2011  -- Issue #18*/
     stReturn += "<input type='checkbox' name='nmType' value='128' " + stChecked + " onclick='checkAll(document.forms[1].nmType, this)'/> Business Analyst ";
+    //stReturn += "<input type='checkbox' name='nmType' value='128' " + stChecked + " /> Business Analyst ";
     if ((nmType & 512) != 0)
     {
       stChecked = " checked ";
@@ -3191,6 +3216,7 @@ public class EpsUserData
     }
     /* AS -- 2Oct2011  -- Issue #18*/
     stReturn += "<input type='checkbox' name='nmType' value='512' " + stChecked + " onclick='checkAll(document.forms[1].nmType, this)'/> Executive ";
+    //stReturn += "<input type='checkbox' name='nmType' value='512' " + stChecked + " /> Executive ";
     if ((nmType & 64) != 0)
     {
       stChecked = " checked ";
@@ -3204,6 +3230,7 @@ public class EpsUserData
     }
     /* AS -- 2Oct2011  -- Issue #18*/
     stReturn += "<input type='checkbox' name='nmType' value='64' " + stChecked + " onclick='checkAll(document.forms[1].nmType,this)'/> Project Manager ";
+    //stReturn += "<input type='checkbox' name='nmType' value='64' " + stChecked + " /> Project Manager ";
     if ((nmType & 32) != 0)
     {
       stChecked = " checked ";
@@ -3213,6 +3240,7 @@ public class EpsUserData
     }
     /* AS -- 2Oct2011  -- Issue #18*/
     stReturn += "<input type='checkbox' name='nmType' value='32' " + stChecked + " onclick='checkAll(document.forms[1].nmType,this)'/> Project Portfolio Manager ";
+    //stReturn += "<input type='checkbox' name='nmType' value='32' " + stChecked + " /> Project Portfolio Manager ";
     if ((nmType & 1) != 0)
     {
       stChecked = " checked ";
@@ -3224,6 +3252,7 @@ public class EpsUserData
     stReturn += "<br>";
     /* AS -- 2Oct2011  -- Issue #18*/
     stReturn += "<input type='checkbox' name='nmType' value='1' " + stChecked + " onclick='checkAll(document.forms[1].nmType,this)'/> Project Team Member ";
+    //stReturn += "<input type='checkbox' name='nmType' value='1' " + stChecked + " /> Project Team Member ";
     return stReturn;
   }
 
@@ -3464,7 +3493,7 @@ public class EpsUserData
     return stReturn;
   }
 
-  private String specialDay(ResultSet rsTable, String value)
+  private String specialDay(ResultSet rsTable)
   {
     String stReturn = "";
     int iYear = 0;
@@ -3506,20 +3535,20 @@ public class EpsUserData
       stReturn += "<tr><td>Click on DATE or select different year: " + getYear("stYear", stYear) + " </td></tr>";
       stReturn += "</table>";
       stReturn += "<table><tr>";
-      stReturn += "<td valign=top>" + getCalendarMonth(iYear, 1, rsHoliday, value) + "</td>";
-      stReturn += "<td valign=top>" + getCalendarMonth(iYear, 2, rsHoliday, value) + "</td>";
-      stReturn += "<td valign=top>" + getCalendarMonth(iYear, 3, rsHoliday, value) + "</td>";
-      stReturn += "<td valign=top>" + getCalendarMonth(iYear, 4, rsHoliday, value) + "</td>";
+      stReturn += "<td valign=top>" + getCalendarMonth(iYear, 1, rsHoliday) + "</td>";
+      stReturn += "<td valign=top>" + getCalendarMonth(iYear, 2, rsHoliday) + "</td>";
+      stReturn += "<td valign=top>" + getCalendarMonth(iYear, 3, rsHoliday) + "</td>";
+      stReturn += "<td valign=top>" + getCalendarMonth(iYear, 4, rsHoliday) + "</td>";
       stReturn += "</tr><tr>";
-      stReturn += "<td valign=top>" + getCalendarMonth(iYear, 5, rsHoliday, value) + "</td>";
-      stReturn += "<td valign=top>" + getCalendarMonth(iYear, 6, rsHoliday, value) + "</td>";
-      stReturn += "<td valign=top>" + getCalendarMonth(iYear, 7, rsHoliday, value) + "</td>";
-      stReturn += "<td valign=top>" + getCalendarMonth(iYear, 8, rsHoliday, value) + "</td>";
+      stReturn += "<td valign=top>" + getCalendarMonth(iYear, 5, rsHoliday) + "</td>";
+      stReturn += "<td valign=top>" + getCalendarMonth(iYear, 6, rsHoliday) + "</td>";
+      stReturn += "<td valign=top>" + getCalendarMonth(iYear, 7, rsHoliday) + "</td>";
+      stReturn += "<td valign=top>" + getCalendarMonth(iYear, 8, rsHoliday) + "</td>";
       stReturn += "</tr><tr>";
-      stReturn += "<td valign=top>" + getCalendarMonth(iYear, 9, rsHoliday, value) + "</td>";
-      stReturn += "<td valign=top>" + getCalendarMonth(iYear, 10, rsHoliday, value) + "</td>";
-      stReturn += "<td valign=top>" + getCalendarMonth(iYear, 11, rsHoliday, value) + "</td>";
-      stReturn += "<td valign=top>" + getCalendarMonth(iYear, 12, rsHoliday, value) + "</td>";
+      stReturn += "<td valign=top>" + getCalendarMonth(iYear, 9, rsHoliday) + "</td>";
+      stReturn += "<td valign=top>" + getCalendarMonth(iYear, 10, rsHoliday) + "</td>";
+      stReturn += "<td valign=top>" + getCalendarMonth(iYear, 11, rsHoliday) + "</td>";
+      stReturn += "<td valign=top>" + getCalendarMonth(iYear, 12, rsHoliday) + "</td>";
       stReturn += "</tr>";
       stReturn += "</table>";
     } catch (Exception e)
@@ -3529,7 +3558,7 @@ public class EpsUserData
     return stReturn;
   }
 
-  private String getCalendarMonth(int iYear, int iMonth, ResultSet rsHoliday, String value)
+  private String getCalendarMonth(int iYear, int iMonth, ResultSet rsHoliday)
   {
     String stEdit = "";
     String stDate = "";
@@ -3633,10 +3662,7 @@ public class EpsUserData
           } else
           {
             stEdit += "<td>";
-            if(value.equals("specialday"))
-                stEdit += "\n<a href='#' onClick=\"specialDay( '" + iMonth + "/" + iD + "/" + iYear + "');\">" + iD + "</a></td>";
-            else if(value.equals("specialdayfd"))
-            	stEdit += "\n<a href='#' onClick=\"specialDay1( '" + iMonth + "/" + iD + "/" + iYear + "');\">" + iD + "</a></td>";
+            stEdit += "\n<a href='#' onClick=\"specialDay( '" + iMonth + "/" + iD + "/" + iYear + "');\">" + iD + "</a></td>";
           }
         }
       }
@@ -4829,11 +4855,13 @@ public class EpsUserData
               {
                 stSql += ",";
               }
+              
               iCount++;
               stSql += rsF.getString("stDbFieldName") + "= null "; // Empty date/time
               continue; // ----------------------------------------------->
             }
           }
+
           if (iCount > 0)
           {
             stSql += ",";
@@ -4897,9 +4925,17 @@ public class EpsUserData
           {
             stValue = this.ebEnt.ebUd.fmtDateToDb(stValue);
           }
+          
           ////
-          stSql += rsF.getString("stDbFieldName") + "=" + this.ebEnt.dbDyn.fmtDbString(stValue);
+          if(rsF.getString("stDbFieldName").equals("SchFixedStartDate")){	//set start date
+        	  stSql += "SchStartDate=" + this.ebEnt.dbDyn.fmtDbString(stValue);
+          }else if(rsF.getString("stDbFieldName").equals("SchFixedFinishDate")){	//set finish date
+        	  stSql += "SchFinishDate=" + this.ebEnt.dbDyn.fmtDbString(stValue);
+          }else{
+        	  stSql += rsF.getString("stDbFieldName") + "=" + this.ebEnt.dbDyn.fmtDbString(stValue);
+          }
         }
+        
         switch (rsF.getInt("nmDataType"))
         {
           case 40:
@@ -4950,12 +4986,31 @@ public class EpsUserData
               break;
           }
           ResultSet rsOld = this.ebEnt.dbDyn.ExecuteSql(stSqlOld + stWhere);
+          
           this.ebEnt.dbDyn.ExecuteUpdate(stSql + stWhere);
+          
           switch (rsTable.getInt("nmTableId"))
           {
             case 21:
               double dCost = calculateScheduleCost(stWhere);
-              this.ebEnt.dbDyn.ExecuteUpdate("update Schedule set SchCost = " + dCost + " " + stWhere);
+              //set remaining cost = cost if task not started
+              ResultSet rsDate = this.ebEnt.dbDyn.ExecuteSql("select SchStartDate from  Schedule" + stWhere);
+              rsDate.first();
+
+              if(rsDate.getTimestamp("SchStartDate") != null){
+            	  Timestamp startDate = rsDate.getTimestamp("SchStartDate");
+            	  Date date = new Date();
+            	  Timestamp today = new Timestamp(date.getTime());
+                  
+                  if(today.compareTo(startDate) < 0){
+                	  //if task not started yet, cost remaining = estimated cost
+                	  this.ebEnt.dbDyn.ExecuteUpdate("update Schedule set SchRemainingCost = " + dCost + ", SchCost = " + dCost + " " + stWhere);
+                  }else{
+                	  this.ebEnt.dbDyn.ExecuteUpdate("update Schedule set SchCost = " + dCost + " " + stWhere);
+                  }
+              }else{
+            	  this.ebEnt.dbDyn.ExecuteUpdate("update Schedule set SchCost = " + dCost + " " + stWhere);
+              }
               break;
           }
           ResultSet rsNew = this.ebEnt.dbDyn.ExecuteSql(stSqlOld);
@@ -4970,6 +5025,7 @@ public class EpsUserData
               break;
           }
         }
+
         if (this.stError.length() > 0)
         {
           stError += "<br>" + stSql + "<br>";

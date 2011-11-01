@@ -54,9 +54,12 @@ public class EbEnterprise
 
       if (this.dbEb == null)
       {
-        this.dbEb = new EbDatabase(0, "localhost", "root", "27225643", stEbName, "");
-        this.dbEnterprise = new EbDatabase(0, "localhost", "root", "27225643", stEbEnterpriseName, "");
-        this.dbCommon = new EbDatabase(0, "localhost", "root", "27225643", stEbCommon, "");
+    	  this.dbEb = new EbDatabase(0, "localhost", "root", "27225643", stEbName, "");
+          this.dbEnterprise = new EbDatabase(0, "localhost", "root", "27225643", stEbEnterpriseName, "");
+          this.dbCommon = new EbDatabase(0, "localhost", "root", "27225643", stEbCommon, "");
+        /*this.dbEb = new EbDatabase(0, "localhost", "root", "", stEbName, "");
+        this.dbEnterprise = new EbDatabase(0, "localhost", "root", "", stEbEnterpriseName, "");
+        this.dbCommon = new EbDatabase(0, "localhost", "root", "", stEbCommon, "");*/
         this.ebUd = new EbUserData(this);
         this.ebSec = new EbSecurity(this);
         this.ebNorm = new EbNormalized(this);
