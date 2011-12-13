@@ -4,8 +4,6 @@
  */
 package com.eps.model;
 
-import com.ederbase.model.EbEnterprise;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -17,6 +15,8 @@ import java.net.URL;
 import java.sql.ResultSet;
 import java.text.DecimalFormat;
 import java.util.Vector;
+
+import com.ederbase.model.EbEnterprise;
 
 /**
  *
@@ -123,14 +123,14 @@ public class EpsReport
   {
     return this.stError;
   }
-  
+
   /* AS -- 2Oct2011 -- Issue#9*/
   public String epsShowSavedReports(ResultSet rsTable)
   {
     String stReturn = "";
     try
     {
-      // todo
+    	// todo
     	/* AS -- 29Sept2011 -- Issue #9*/
       //String stSql = "select r.*,cr.stReportType,cr.stReportName from teb_reports r, teb_customreport cr where r.nmCustomReportId=cr.RecId order by r.RecId Desc";
     	String stSql = "select r.*,cr.stReportType,cr.stReportName from teb_reports r, teb_customreport cr where r.nmCustomReportId=cr.RecId and cr.stReportType="+ rsTable.getInt("nmTableId") +" order by r.RecId Desc";
@@ -189,6 +189,30 @@ public class EpsReport
       {
         rs.absolute(1);
         String[] aLines = rs.getString("stReportRaw").split("\\|", -1);
+        
+        //project name
+        //get filtered projects
+        String pIDs = "";
+        String prjName = "";
+        String[] prjArr = null;
+    	prjArr = rs.getString("prjFilter").split(",");
+    	if(prjArr != null && prjArr.length > 0){
+    		for(int i=0; i<prjArr.length; i++){
+    			if(!prjArr[i].equals(""))
+    				pIDs += "RecId = " + prjArr[i] + " or ";
+        	}
+        	if(!pIDs.equals("")){
+        		pIDs = " where " + pIDs.substring(0, pIDs.length()-4);
+        	}
+    	}
+        ResultSet rsPID = ebEnt.dbDyn.ExecuteSql("select ProjectName from projects" + pIDs);
+        while(rsPID.next()){
+        	prjName += rsPID.getString("ProjectName") + ", ";
+        }
+        if(!prjName.equals("")){
+    		prjName = prjName.substring(0, prjName.length()-2);
+    	}
+        
         //stPageTitle = rs.getString("stReportType") + " Report &nbsp;&nbsp;&nbsp; Title: <b>" + rs.getString("stReportName") + "</b> Run: " + rs.getString("dtRun");
         stPageTitle = "<b>" + rs.getString("stReportName") + "</b> &nbsp;&nbsp;<i>Run: " + rs.getString("dtRun") + "</i>";
         stReturn += "<center><table border=1>";
@@ -215,24 +239,28 @@ public class EpsReport
                 aTdClass[iF] += " style=\"" + rs2.getString("stCustom") + "\" ";
               if (aTdClass[iF].length() <= 0)
               {
-            	  /* AS -- 19Oct2011 -- Issue # 55 */
-            	  /*if (rs2.getInt("nmDataType") == 1 || rs2.getInt("nmDataType") == 5 || rs2.getInt("nmDataType") == 31)
-                  {
-                    if (rs2.getString("stHandler").length() <= 0)
-                      aTdClass[iF] = " align=right ";
-                  }*/
-                  if (rs2.getInt("nmDataType") == 1  || rs2.getInt("nmDataType") == 5 || rs2.getInt("nmDataType") == 31)
-                  {
-                    if (rs2.getString("stHandler").length() <= 0)
-                      aTdClass[iF] = " align=right ";
-                  }
-                
+                /* AS -- 19Oct2011 -- Issue # 55 */
+          	  /*if (rs2.getInt("nmDataType") == 1 || rs2.getInt("nmDataType") == 5 || rs2.getInt("nmDataType") == 31)
+                {
+                  if (rs2.getString("stHandler").length() <= 0)
+                    aTdClass[iF] = " align=right ";
+                }*/
+                if (rs2.getInt("nmDataType") == 1  || rs2.getInt("nmDataType") == 5 || rs2.getInt("nmDataType") == 31)
+                {
+                  if (rs2.getString("stHandler").length() <= 0)
+                    aTdClass[iF] = " align=right ";
+                }
               }
             }
+            
             /* AS -- 19Oct2011 -- Issue # 55 */
             //stReturn += "<tr><th colspan=" + (aFields.length - 1) + " align=center>" + stPageTitle + "</th></tr>";
             stReturn += "<tr><th colspan=" + (aFields.length - 1) + " align=center STYLE='font-size: 18px; background-color: yellow;'>" + stPageTitle + "</th></tr>";
             
+            //display project filters if any projects are filtered
+            if(rs.getString("prjFilter") != ""){
+            	stReturn += "<tr><th colspan=" + (aFields.length - 1) + " align='left'>Project " + rs.getString("stReportName") + " Report for project " + prjName + "</th></tr>";
+            }
           }
           stReturn += "<tr>";
           //~Project Name^123~Synergy With Organization^1088~Synergy With Other Projects^1089~Total Ranking Score^998|~EPS Office Building~27~24~3370|~EPPORA Training Sessions~21~21~3179|~EPPORA SQL Server Conversion Suite~18~18~2950|~EPPORA Source Analysis~15~15~2749|~EPPORA Resource Modeling~12~12~2546|~EPPORA Project Templates~9~9~2365|~EPPORA Project Manager Scheduling Enhancer~24~27~2192|~EPPORA Primavera Conversion Suite~6~6~2022|~EPPORA Performance Enhancer~3~3~1871|~EPPORA Oracle Conversion Suite~6~6~1833|~EPPORA Online Training~9~9~1761|~EPPORA Niku Workbench Conversion Suite~12~12~1655|~EPPORA MySQL Conversion Suite~15~15~1511|~EPPORA Microsoft Project Conversion Suite~30~0~1337|~EPPORA Implementation~27~27~1148|~EPPORA Estimation Analyzer~18~18~852|~EPPORA DB2 Conversion Suite~21~21~650|~EPPORA Comprehensive Project Test Tool~24~24~418|~EPPORA Automated Test Suite~18~21~156|
@@ -244,7 +272,6 @@ public class EpsReport
               /* AS -- 19Oct2011 -- Issue # 55 */
               //stReturn += "<th>" + aV[0] + "</td>";
               stReturn += "<th STYLE='font-size: 12px; background-color:yellow;'>" + aV[0] + "</td>";
-              
             } else
               stReturn += "<td " + aTdClass[iF] + ">" + aFields[iF].replace("`", "<br>") + "</td>";
           }
@@ -288,8 +315,8 @@ public class EpsReport
       {
         nmCustomReportId = epsUd.ebEnt.dbDyn.ExecuteSql1n("select max(RecId) from teb_customreport");
         nmCustomReportId++;
-        epsUd.ebEnt.dbDyn.ExecuteUpdate("replace into teb_customreport (RecId,stReportName,stReportType) values "
-          + "(" + nmCustomReportId + ",\"New " + rsTable.getString("stTableName") + " - " + nmCustomReportId + "\",\"" + rsTable.getString("nmTableId") + "\") ");
+        epsUd.ebEnt.dbDyn.ExecuteUpdate("replace into teb_customreport (RecId,stReportName,stReportType, prjFilter) values "
+          + "(" + nmCustomReportId + ",\"New " + rsTable.getString("stTableName") + " - " + nmCustomReportId + "\",\"" + rsTable.getString("nmTableId") + "\", \"\") ");
       }
       ResultSet rsCr = epsUd.ebEnt.dbDyn.ExecuteSql("SELECT * FROM teb_customreport where RecId=" + nmCustomReportId);
       rsCr.absolute(1);
@@ -302,14 +329,14 @@ public class EpsReport
           stSql = "select * from teb_fields f, teb_epsfields ef left join teb_reportcolumns rc"
             + " on ef.nmForeignId=rc.nmFieldId and rc.nmCustomReportId = " + nmCustomReportId
             + " where f.nmForeignId=ef.nmForeignId and"
-            + " f.nmForeignId in (116,1029,120,1025,1027,1028,112,1029,1030,114,115,127,1031,1023,47,805,1024)"
+            + " f.nmForeignId in (116,1029,120,1025,1027,1028,112,1029,1030,114,115,127,1031,1023,47,805,1024,765,766)"
             + " and rc.nmFieldId is null and f.nmForeignID not in ( 0 ) order by f.stLabel";
           break;
         case 51: // Budget Report
           stSql = "select * from teb_fields f, teb_epsfields ef left join teb_reportcolumns rc"
             + " on ef.nmForeignId=rc.nmFieldId and rc.nmCustomReportId = " + nmCustomReportId
             + " where f.nmForeignId=ef.nmForeignId and"
-            + " ( (f.nmTabId in (51) and (f.nmFlags & 0x400) = 0) or f.nmForeignId in (116) )"
+            + " ( (f.nmTabId in (51) and (f.nmFlags & 0x400) = 0) or f.nmForeignId in (116,765,766) )"
             + " and rc.nmFieldId is null and f.nmForeignID not in ( 0 ) order by f.stLabel";
           break;
         case 53: // Cost Effectiveness  133,82.494
@@ -326,15 +353,15 @@ public class EpsReport
             + " or f.nmForeignID in ( 880 )) and rc.nmFieldId is null order by f.stLabel";
           break;
         case 56: // Division
-        	/* AS -- 19Oct2011 -- Issue # 61 */
-        	/*stSql = "select * from teb_fields f, teb_epsfields ef left join teb_reportcolumns rc"
+          /* AS -- 19Oct2011 -- Issue # 61 */
+      	/*stSql = "select * from teb_fields f, teb_epsfields ef left join teb_reportcolumns rc"
+          + " on ef.nmForeignId=rc.nmFieldId and rc.nmCustomReportId = " + nmCustomReportId
+          + " where f.nmForeignId=ef.nmForeignId and f.nmTabId in (10) and (nmFlags & 0x400) = 0"
+          + " and rc.nmFieldId is null and f.nmForeignID not in ( 0 ) order by f.stLabel";*/
+          stSql = "select * from teb_fields f, teb_epsfields ef left join teb_reportcolumns rc"
             + " on ef.nmForeignId=rc.nmFieldId and rc.nmCustomReportId = " + nmCustomReportId
-            + " where f.nmForeignId=ef.nmForeignId and f.nmTabId in (10) and (nmFlags & 0x400) = 0"
-            + " and rc.nmFieldId is null and f.nmForeignID not in ( 0 ) order by f.stLabel";*/
-            stSql = "select * from teb_fields f, teb_epsfields ef left join teb_reportcolumns rc"
-              + " on ef.nmForeignId=rc.nmFieldId and rc.nmCustomReportId = " + nmCustomReportId
-              + " where f.nmForeignId=ef.nmForeignId and f.nmTabId in (10) and ((nmFlags & 0x400) = 0 or nmFlags = 1024) "
-              + " and rc.nmFieldId is null and f.nmForeignID not in ( 0 ) order by f.stLabel";
+            + " where f.nmForeignId=ef.nmForeignId and f.nmTabId in (10) and ((nmFlags & 0x400) = 0 or nmFlags = 1024) "
+            + " and rc.nmFieldId is null and f.nmForeignID not in ( 0 ) order by f.stLabel";
           break;
         case 57: // Inventory
           stSql = "select * from teb_fields f, teb_epsfields ef left join teb_reportcolumns rc"
@@ -394,7 +421,7 @@ public class EpsReport
           stSql = "select * from teb_fields f, teb_epsfields ef left join teb_reportcolumns rc"
             + " on ef.nmForeignId=rc.nmFieldId and rc.nmCustomReportId = " + nmCustomReportId
             + " where f.nmForeignId=ef.nmForeignId and"
-            + " f.nmForeignId in (829,258,814,116,45,1008)"
+            + " f.nmForeignId in (271,829,258,814,116,45,1008)"
             + " and rc.nmFieldId is null and f.nmForeignID not in ( 0) order by f.stLabel";
           break;
         case 69: // Productivity
@@ -815,7 +842,7 @@ public class EpsReport
         	if(prjArr != null && prjArr.length > 0){
         		for(int i=0; i<prjArr.length; i++){
         			if(!prjArr[i].equals(""))
-        				pIDs += "r.RecId = " + prjArr[i] + " or ";
+        				pIDs += "p.RecId = " + prjArr[i] + " or ";
             	}
             	if(!pIDs.equals("")){
             		pIDs = " and (" + pIDs.substring(0, pIDs.length()-4) + ")";
@@ -858,16 +885,18 @@ public class EpsReport
         	*/
         	
         	//get filtered projects
-          	prjArr = prjFilter.split(",");
-          	if(prjArr != null && prjArr.length > 0){
-          		for(int i=0; i<prjArr.length; i++){
-          			if(!prjArr[i].equals(""))
-          				pIDs += "p.RecId = " + prjArr[i] + " or ";
-              	}
-              	if(!pIDs.equals("")){
-              		pIDs = " and (" + pIDs.substring(0, pIDs.length()-4) + ")";
-              	}
-          	}
+        	if(prjFilter != null && prjFilter.length() > 0){
+	          	prjArr = prjFilter.split(",");
+	          	if(prjArr != null && prjArr.length > 0){
+	          		for(int i=0; i<prjArr.length; i++){
+	          			if(!prjArr[i].equals(""))
+	          				pIDs += "p.RecId = " + prjArr[i] + " or ";
+	              	}
+	              	if(!pIDs.equals("")){
+	              		pIDs = " and (" + pIDs.substring(0, pIDs.length()-4) + ")";
+	              	}
+	          	}
+        	}
             
         	//get users from filter
             if (stFilter != null && stFilter.length() > 7)
@@ -992,7 +1021,7 @@ public class EpsReport
             break;
           case 69: // Productivity
             //u.nmUserId in (" + stSqlUser + ") and
-        	/* Start of Issue AS -- 12Oct2011 -- Issue # 43 */
+        	  /* Start of Issue AS -- 12Oct2011 -- Issue # 43 */
         	  String stSqlUser1 = "";
               if (stFilter != null && stFilter.length() > 7)
               { //128^,3,,4,,6,^,3,,1,^full^^beg
@@ -1073,7 +1102,7 @@ public class EpsReport
 
           case 51: // Budget Report
             getBudgetReport();
-            stSql += "SELECT * FROM Budget_Report br, Projects p where p.RecId=br.RecId order by p.ProjectName;";
+            stSql += "SELECT * FROM Budget_Report br, Projects p where p.RecId=br.RecId order by p.ProjectName";
             rsR = this.epsUd.ebEnt.dbDyn.ExecuteSql(stSql);
             rsR.last();
             iMaxR = rsR.getRow();
@@ -1085,26 +1114,25 @@ public class EpsReport
             break;
 
           case 55: // Criteria
-            this.epsUd.epsEf.processUsersInDivision();
-            
-            /* Start of Issue AS -- 12Oct2011 -- Issue # 50 */
-            String stDivList1 = "";
-            if (stFilter != null && stFilter.length() > 7)
-            { //128^,3,,4,,6,^,3,,1,^full^^beg
-              String[] aV = stFilter.split("\\^", -1);
-              int nmType = Integer.parseInt(aV[0]);
-              //stSqlUser = this.epsUd.makeUserSql(nmType, aV[1], aV[2], aV[3], aV[4], aV[5]);
-              stDivList1 = aV[2];
-              if (!stDivList1.contains(",0,"))
-              {
-                stDivList1 = stDivList1.replace(",,", ",");
-                stDivList1 = stDivList1.substring(1, stDivList1.length() - 1);
-                //stSql += " where nmDivision in (" + stDivList + ") ";
-              }
-              
+        	
+    	  /* Start of Issue AS -- 12Oct2011 -- Issue # 50 */
+          String stDivList1 = "";
+          if (stFilter != null && stFilter.length() > 7)
+          { //128^,3,,4,,6,^,3,,1,^full^^beg
+            String[] aV = stFilter.split("\\^", -1);
+            int nmType = Integer.parseInt(aV[0]);
+            //stSqlUser = this.epsUd.makeUserSql(nmType, aV[1], aV[2], aV[3], aV[4], aV[5]);
+            stDivList1 = aV[2];
+            if (!stDivList1.contains(",0,"))
+            {
+              stDivList1 = stDivList1.replace(",,", ",");
+              stDivList1 = stDivList1.substring(1, stDivList1.length() - 1);
+              //stSql += " where nmDivision in (" + stDivList + ") ";
             }
-            /* End of Issue AS -- 12Oct2011 -- Issue # 50 */
             
+          }
+          /* End of Issue AS -- 12Oct2011 -- Issue # 50 */
+            this.epsUd.epsEf.processUsersInDivision();
             stSql += "SELECT * FROM Criteria c, teb_division d where c.nmDivision = d.nmDivision order by stDivisionName,c.CriteriaName";
             rsR = this.epsUd.ebEnt.dbDyn.ExecuteSql(stSql);
             rsR.last();
@@ -1247,9 +1275,11 @@ public class EpsReport
   						  DecimalFormat df = new DecimalFormat(" #,###,###,##0.00");
 	                	  Double vald = Double.parseDouble(fieldArr[i].substring(2)) * Double.parseDouble(resp[1]);
 	                	  fieldArr[i] = rs2.getString("stMoneySymbol") + df.format(vald);
+	                  System.out.println(rate);
 	                  }
 	              }
             	  val += "~" + fieldArr[i];
+            	  System.out.println(fieldArr[i]);
               }
               stReport += val + "|";
             }
@@ -1359,6 +1389,8 @@ public class EpsReport
   {
     StringBuilder abReturn = new StringBuilder(10000);
     String stValue = "";
+    String stSql = "";
+    ResultSet rs = null;
     int iF = 0;
     int iCount = 0;
     int stlvl = 0;
@@ -1367,7 +1399,10 @@ public class EpsReport
       for (iF = 1; iF <= iMaxF; iF++)
       {
         rsF.absolute(iF);
-        stValue = rsR.getString(rsF.getString("stDbFieldName"));
+        if(rsF.getInt("nmFieldId") != 765 && rsF.getInt("nmFieldId") != 766){	//these are not in db. calculate these later
+        	stValue = rsR.getString(rsF.getString("stDbFieldName"));
+        }
+        
         switch (rsF.getInt("nmDataType"))
         {
         case 5: //cost effectiveness
@@ -1475,7 +1510,7 @@ public class EpsReport
                   {
                     if (iCount++ > 1)
                       abReturn.append("<br>");
-                    abReturn.append("Contains adjectives/adverbs");
+                    abReturn.append("adjectives/adverbs");
                   }
                   if ((iD50Flags & 0x40) != 0)
                   {
@@ -1557,9 +1592,61 @@ public class EpsReport
             	  abReturn.append("~");
                   abReturn.append(fmtReportData(stValue, rsF));
                   break;
+              case 765:  //baseline cost difference
+            	  Double currCost = 0.00;
+            	  Double appCost = 0.00;
+            	  //lookup current baseline
+            	  stSql = "select sum(SchCost) as costSum FROM Schedule where (SchFlags & 0x10 ) != 0 and nmProjectId=" + rsR.getString("RecId") + " and nmBaseline=" + rsR.getString("CurrentBaseline");
+            	  rs = this.epsUd.ebEnt.dbDyn.ExecuteSql(stSql);
+            	  if(rs.first()){
+            		  rs.absolute(1);
+            		  
+            		  currCost = Double.parseDouble(rs.getString("costSum"));
+            	  }
+
+            	  //look up saved baseline
+            	  stSql = "select nmCost from teb_baseline where nmProjectId="+rsR.getString("RecId")+" and stType='Approve' ORDER BY nmBaseline DESC";
+            	  rs = this.epsUd.ebEnt.dbDyn.ExecuteSql(stSql);
+            	  if(rs.first()){
+            		  rs.absolute(1);
+            		  appCost = Double.parseDouble(rs.getString("nmCost"));
+            	  }
+            	  abReturn.append("~");
+                  
+            	  //if baseline was not approved, no difference
+            	  if(appCost > 0.00){
+            		  DecimalFormat df = new DecimalFormat("$ #,###,###,##0.00");
+            		  abReturn.append(df.format(currCost-appCost));
+            	  }
+            	  break;
+              case 766:  //baseline effort difference
+            	  Double currBL = 0.00;
+            	  Double appBL = 0.00;
+            	  //lookup current baseline
+            	  stSql = "SELECT sum(SchEstimatedEffort) as effSum FROM Schedule where (SchFlags & 0x10 ) != 0 and nmProjectId=" + rsR.getString("RecId") + " and nmBaseline=" + rsR.getString("CurrentBaseline");
+            	  
+            	  rs = this.epsUd.ebEnt.dbDyn.ExecuteSql(stSql);
+            	  if(rs.first()){
+            		  rs.absolute(1);
+            		  
+            		  currBL = Double.parseDouble(rs.getString("effSum"));
+            	  }
+
+            	  //look up saved baseline
+            	  stSql = "select nmEffort from teb_baseline where nmProjectId="+rsR.getString("RecId")+" and stType='Approve' ORDER BY nmBaseline DESC";
+            	  rs = this.epsUd.ebEnt.dbDyn.ExecuteSql(stSql);
+            	  if(rs.first()){
+            		  rs.absolute(1);
+            		  appBL = Double.parseDouble(rs.getString("nmEffort"));
+            	  }
+            	  abReturn.append("~");
+            	  //if baseline was not approved, no difference
+            	  if(appBL > 0.00)
+            		  abReturn.append(Math.ceil(currBL-appBL));
+            	  break;
               default:
                 abReturn.append("~");
-                abReturn.append(fmtReportData(stValue, rsF));
+                abReturn.append(stValue);
                 break;
             }
             break;
@@ -1673,7 +1760,7 @@ public class EpsReport
   private String viewReport(ResultSet rsTable)
   {
     String stReturn = "";
-    
+
     /* AS -- 2Oct2011 -- Issue#9*/
     //stReturn += epsShowSavedReports();
     stReturn += epsShowSavedReports(rsTable);

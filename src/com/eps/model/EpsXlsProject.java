@@ -325,7 +325,11 @@ class EpsXlsProject //extends EpsUserData
 
             if (iEditId == rs.getInt("RecId") && (rsFields.getInt("nmFlags") & 0x1) != 0)
             {
-              sbReturn.append(editXlsField(stValue));
+            	if (rsFields.getString("stDbFieldName").equals("ReqLevel")){
+            		sbReturn.append(editXlsField(stValue));
+            	}else{
+            		sbReturn.append(editXlsField(stValue));
+            	}
             } else
             {
               if (rsFields.getString("stDbFieldName").equals("ReqTitle"))
@@ -657,7 +661,7 @@ class EpsXlsProject //extends EpsUserData
       {
         if (!stSave.equals("Cancel"))
         {
-          saveInline(stChild, stPk);
+        	saveInline(stChild, stPk);
         }
         this.ebEnt.ebUd.setRedirect(stLink + "#row" + this.ebEnt.ebUd.request.getParameter("edit"));
         return ""; // redirect, to remove EDIT tag ----------------------------->
@@ -707,6 +711,21 @@ class EpsXlsProject //extends EpsUserData
           this.epsUd.makeTask(16, this.epsUd.epsEf.getScheduleName("" + iRecIdDo, stPk, nmBaseline)); // New Project Schedule
           this.ebEnt.ebUd.setRedirect(stLink + "&edit=" + iRecMax + "&new=y#row" + iEditId);
           return ""; //----------------------------->
+        } else if (stAction.equals("send"))
+        {
+        	ResultSet rset = this.ebEnt.dbDyn.ExecuteSql("select SchEstimatedEffort, SchEfforttoDate from schedule where RecId=" + iRecIdDo + " and  nmProjectId=" + stPk + " and nmBaseline=" + this.nmBaseline);
+        	rset.absolute(1);
+        	if(rset.getInt("SchEfforttoDate") > rset.getInt("SchEstimatedEffort")){
+        		this.ebEnt.ebUd.setPopupMessage("Expended hours may not be more than estimated hours. Please adjust estimated hours first.");
+        	}else{
+        		this.ebEnt.dbDyn.ExecuteUpdate("update Schedule set SchMessage='Y', dtSchLastUpdate=now() where RecId=" + iRecIdDo + " and  nmProjectId=" + stPk + " and nmBaseline=" + this.nmBaseline);
+                int iDel = 1;
+                
+                this.ebEnt.dbDyn.ExecuteUpdate("update Schedule set SchLevel=(SchLevel-1) where nmProjectId=" + stPk + " and nmBaseline=" + this.nmBaseline + " "
+                  + "and SchId > " + rs1.getString("SchId") + " and SchId < " + getEnd(stChild, stPk, rs1));
+                this.ebEnt.dbDyn.ExecuteUpdate("update Schedule set SchId=(SchId-" + iDel + ") where SchId > " + rs1.getString("SchId") + " and  nmProjectId=" + stPk + " and nmBaseline=" + this.nmBaseline + " "
+                  + "and SchId > " + rs1.getString("SchId"));
+        	}
         } else if (stAction.equals("delete"))
         {
           this.ebEnt.dbDyn.ExecuteUpdate("delete from Schedule where RecId=" + iRecIdDo + " and  nmProjectId=" + stPk + " and nmBaseline=" + this.nmBaseline);
@@ -793,6 +812,12 @@ class EpsXlsProject //extends EpsUserData
       else
         iEditId = -2;
       int iMaxRecords = this.ebEnt.dbDyn.ExecuteSql1n("select count(*) from Schedule where nmProjectId=" + stPk + " and nmBaseline=" + this.nmBaseline + " and (SchFlags & 0x1) != 1");
+
+      //do not go back to first page if click next on last page
+      if(iFrom > iMaxRecords){
+    	  iFrom -= iBlock;
+      }
+      
       stSql = "select * from Schedule where nmProjectId=" + stPk + " and nmBaseline=" + this.nmBaseline + " and (SchFlags & 0x1) != 1 order by SchId,RecId desc limit " + iFrom + "," + iBlock;
       ResultSet rs = this.ebEnt.dbDyn.ExecuteSql(stSql);
       rs.last();
@@ -801,7 +826,7 @@ class EpsXlsProject //extends EpsUserData
       {
         iFrom = 0; // reset to 0
         rs.close();
-        stSql = "select * from Schedule where nmProjectId=" + stPk + " and nmBaseline=" + this.nmBaseline + " and (SchFlags & 0x1) != 1 order by SchId,RecId desc limit " + iFrom + "," + iBlock;
+        stSql = "select * from Schedule where SchMessage IS NULL and nmProjectId=" + stPk + " and nmBaseline=" + this.nmBaseline + " and (SchFlags & 0x1) != 1 order by SchId,RecId desc limit " + iFrom + "," + iBlock;
         rs = this.ebEnt.dbDyn.ExecuteSql(stSql);
         rs.last();
         iMax = rs.getRow();
@@ -809,7 +834,7 @@ class EpsXlsProject //extends EpsUserData
         { // Clear all collapsed flags -- do EXPAND ALL
           this.ebEnt.dbDyn.ExecuteUpdate("update Schedule set SchFlags = (SchFlags & ~0x3) where nmProjectId=" + stPk + " and nmBaseline=" + this.nmBaseline + "");
           rs.close();
-          stSql = "select * from Schedule where nmProjectId=" + stPk + " and nmBaseline=" + this.nmBaseline + " and (SchFlags & 0x1) != 1 order by SchId,RecId desc limit " + iFrom + "," + iBlock;
+          stSql = "select * from Schedule where SchMessage IS NULL and nmProjectId=" + stPk + " and nmBaseline=" + this.nmBaseline + " and (SchFlags & 0x1) != 1 order by SchId,RecId desc limit " + iFrom + "," + iBlock;
           rs = this.ebEnt.dbDyn.ExecuteSql(stSql);
           rs.last();
           iMax = rs.getRow();
@@ -888,10 +913,15 @@ class EpsXlsProject //extends EpsUserData
                  if (this.rsFields.getInt("nmDataType") == 5 && stValue.length() > 0){
                    sbReturn.append(this.epsUd.rsMyDiv.getString("stMoneySymbol") + " ");		//inline fields
                  }
-                 if (iEditId == rs.getInt("RecId") && (rsFields.getInt("nmFlags") & 0x1) != 0)
+                 if (rsFields.getInt("nmForeignId") == 813 && iEditId == rs.getInt("RecId") && (rsFields.getInt("nmFlags") & 0x1) != 0){
+                	  stValue = makeDependenciesTB(rs, stChild);
+                  	  sbReturn.append(stValue.replace("\n", "<BR>"));
+                 }
+                 else if (iEditId == rs.getInt("RecId") && (rsFields.getInt("nmFlags") & 0x1) != 0)
                  {
                    sbReturn.append(editXlsField(stValue));		//passes value into a editable field
-                 } else
+                 }
+                 else
                  {
                    if (rsFields.getString("stDbFieldName").equals("SchTitle"))
                      for (int i = 0; i < rs.getInt("SchLevel"); i++)
@@ -932,6 +962,31 @@ class EpsXlsProject //extends EpsUserData
                    else if(stValue.equals("") && rsFields.getString("stDbFieldName").equals("SchLaborCategories")){
                 	   stValue = makeListValue(rsFields, "");
                 	   sbReturn.append(stValue.replace("\n", "<BR>"));
+                   }
+                   else if(rsFields.getString("stDbFieldName").equals("SchDependencies")){
+                	   //stValue = makeListValue(rsFields, stValue+"");
+                	   String stdSql = "select * from teb_link where nmProjectId=" + this.stPk + " and nmBaseline=" + this.nmBaseline + " and nmLinkFlags=2 and nmToId=" + rs.getInt("RecId") + " and nmToProject=nmProjectId order by nmFromId";
+	           		   ResultSet res = this.ebEnt.dbDyn.ExecuteSql(stdSql);
+	           		   res.last();
+	           		   int rws = res.getRow();
+	           		   res.absolute(1);
+	           		   stValue = "";
+                	   for(int l=0; l<rws; l++){
+                		   stValue += res.getString("nmFromId");
+                		   if(l<rws-1)
+                			   stValue += ",";
+                		   res.next();
+                	   }
+	           		   sbReturn.append(stValue.replace("\n", "<BR>"));
+                   }
+                   else if(rsFields.getString("stDbFieldName").equals("SchDone")){
+                	   if(stValue.equals("Y")){
+                		   stValue = "<input type='checkbox' disabled='disabled' checked='checked' value='Y'>";
+                	   }else{
+                		   stValue = "<input type='checkbox' disabled='disabled' value='N'>";
+                	   }
+                	   sbReturn.append(stValue);
+                	   
                    }
                    else{
                 	   stValue = makeListValue(rsFields, stValue);
@@ -1329,8 +1384,33 @@ class EpsXlsProject //extends EpsUserData
           sbReturn.append(s1);
           break;
         default:
-          s1 = "<input '" + stStyle + "' maxsize=" + rsFields.getString("nmMaxBytes") + " type=text name=f" + rsFields.getString("nmForeignId") + " id=f" + rsFields.getString("nmForeignId") + " value=\"" + stValue + "\">";
-          sbReturn.append(s1);
+    	  if(rsFields.getString("nmForeignId").equals("231") && Integer.parseInt(this.ebEnt.ebUd.request.getParameter("child")) == 19){
+    		  //drop down for req level 0-x+1
+    		  s1 = "<select '" + stStyle + "' type=text name=f" + rsFields.getString("nmForeignId") + " id=f" + rsFields.getString("nmForeignId") + ">";
+    		  for(int i=0; i<Integer.parseInt(stValue); i++){
+    			  s1 += "<option value=\"" + i + "\">" + i + "</option>";
+    		  }
+    		  s1 += "<option value=\"" + stValue + "\" selected='selected'>" + stValue + "</option>" +
+    		  	"<option value=\"" + (Integer.parseInt(stValue)+1) + "\">" + (Integer.parseInt(stValue)+1) + "</option>";
+    		  s1 += "</select>";
+              sbReturn.append(s1);
+          }else if(rsFields.getString("stDbFieldName").equals("SchDone")){
+        	  if(stValue.equals("Y"))
+        		  s1 = "<input type='checkbox' checked='checked' name=f" + rsFields.getString("nmForeignId") + " id=f" + rsFields.getString("nmForeignId") + ">";
+        	  else
+        		  s1 = "<input type='checkbox' name=f" + rsFields.getString("nmForeignId") + " id=f" + rsFields.getString("nmForeignId") + ">";
+        	  sbReturn.append(s1);
+          }else{
+            s1 = "<input '" + stStyle + "' maxsize=" + rsFields.getString("nmMaxBytes") + " type=text name=f" + rsFields.getString("nmForeignId") + " id=f" + rsFields.getString("nmForeignId") + " value=\"" + stValue + "\">";
+            sbReturn.append(s1);
+          }
+          
+          if(rsFields.getString("nmForeignId").equals("271")){
+        	  //add hidden value for current level
+        	  s1 = "<input type='hidden' name='stLvl' value=\"" + stValue + "\">";
+        	  sbReturn.append(s1);
+          }
+          
           if (iSubmit == 0 && Integer.parseInt(this.ebEnt.ebUd.request.getParameter("child")) != 21)		//submit and cancel buttons for non-schedule
           {
             iSubmit++; // only do it once
@@ -1395,6 +1475,7 @@ class EpsXlsProject //extends EpsUserData
     int rLvl = -1;
     try
     {
+      String doneID = this.ebEnt.dbDyn.ExecuteSql1("SELECT nmForeignId FROM teb_fields WHERE stDbFieldName='SchDone'"); //id for schedule done checkbox
       ResultSet rsTable = this.ebEnt.dbDyn.ExecuteSql("SELECT * FROM teb_table where nmTableId=" + stChild);
       rsTable.absolute(1);
       stSqlOld = "select * from " + rsTable.getString("stDbTableName") + " ";
@@ -1405,7 +1486,7 @@ class EpsXlsProject //extends EpsUserData
       {
         this.rsFields.absolute(iF);
         stValue = this.ebEnt.ebUd.request.getParameter("f" + this.rsFields.getString("nmForeignId"));
-        if (stValue != null)
+        if (stValue != null && !this.rsFields.getString("nmForeignId").equals(doneID))	//append post value to update query if not empty and not done checkbox
         {
           String stTemp = this.rsFields.getString("stValidation");
           if (stTemp != null && stTemp.length() > 0 && stTemp.toLowerCase().equals("d22"))
@@ -1417,18 +1498,55 @@ class EpsXlsProject //extends EpsUserData
           } else if (stTemp != null && stTemp.length() > 0 && stTemp.toLowerCase().equals("d53"))
           {
             stValue = this.epsUd.validateD53(rsTable, this.rsFields, this.ebEnt.ebUd.request.getParameter("edit"), stValue, stPk, nmBaseline);
+          } else if(this.rsFields.getString("stDbFieldName").equals("SchEstimatedEffort") && stChild.equals("21")){
+        	  stValue = this.epsUd.validateEffort(this.rsFields, this.ebEnt.ebUd.request.getParameter("edit"), stValue, stPk, nmBaseline);
           }
           if (iCount > 0)
             stSql += ",";
           stSql += this.rsFields.getString("stDbFieldName") + "=" + this.ebEnt.dbDyn.fmtDbString(stValue);
           iCount++;
         
+          //flag if low level task exceeds 40 #21
+	      if(this.rsFields.getString("stDbFieldName").equals("SchEstimatedEffort") && stChild.equals("21")){
+	    	  String sql = "SELECT * FROM schedule where nmProjectId=" + stPk + " and nmBaseline=" + nmBaseline + " order by RecId desc";
+	          ResultSet rs1 = this.ebEnt.dbDyn.ExecuteSql(sql);
+	          rs1.last();
+	          int iSch = rs1.getRow();
+	          int iLastLevel = -1;
+
+	          for (int i = 1; i <= iSch; i++)
+	          {
+	            rs1.absolute(i);
+	            if (iLastLevel == rs1.getInt("SchLevel") && this.ebEnt.ebUd.request.getParameter("edit").equals(rs1.getString("RecId"))){
+	          	  // same level as before, therefore we are LAST
+	              if(Integer.parseInt(stValue) > 40)
+	            	  stSql += ",nmEffort40Flag=1";	//flag hours
+	              else
+	            	  stSql += ",nmEffort40Flag=0";	//unflag
+	          	  break;
+	            }
+	            iLastLevel = rs1.getInt("SchLevel");
+	          }
+	      }
         
           if(this.rsFields.getString("stDbFieldName").equals("ReqLevel") && stChild.equals("19")){
         	  rLvl = Integer.parseInt(stValue);		//requirement level
           }
         }
-      }    
+      }
+      
+      //set done checkbox for tasks
+      if(stChild.equals("21") && this.ebEnt.ebUd.request.getParameter("f" + doneID) != null){
+    	  if (iCount > 0)
+              stSql += ",";
+          stSql += this.rsFields.getString("stDbFieldName") + "='Y'";
+          iCount++;
+      }else if(stChild.equals("21") && this.ebEnt.ebUd.request.getParameter("f" + doneID) == null){
+    	  if (iCount > 0)
+              stSql += ",";
+          stSql += this.rsFields.getString("stDbFieldName") + "='N'";
+          iCount++;
+      }
       
       //build labor category string
   	  if(this.ebEnt.ebUd.request.getParameter("lc_0") != null && Integer.parseInt(this.ebEnt.ebUd.request.getParameter("child")) == 21 && Integer.parseInt(this.ebEnt.ebUd.request.getParameter("imax")) > 0){
@@ -1442,6 +1560,30 @@ class EpsXlsProject //extends EpsUserData
 	    		  lcfields += this.ebEnt.ebUd.request.getParameter("lc_"+iR) + "~" + this.ebEnt.ebUd.request.getParameter("nr_"+iR) + "~" + this.ebEnt.ebUd.request.getParameter("est_"+iR) + "~" + this.ebEnt.ebUd.request.getParameter("f9001_must_"+iR) + "~" + this.ebEnt.ebUd.request.getParameter("f9002_most_"+iR) + "~" + this.ebEnt.ebUd.request.getParameter("f9003_least_"+iR) + "~" + this.ebEnt.ebUd.request.getParameter("f9004_not_"+iR) + "~";
 	      }
 	      stSql += this.ebEnt.dbDyn.fmtDbString(lcfields);
+      }
+  	  
+  	  
+  	  //build dependencies string
+  	  if(Integer.parseInt(this.ebEnt.ebUd.request.getParameter("child")) == 21 && !this.ebEnt.ebUd.request.getParameter("did_1").equals("") && Integer.parseInt(this.ebEnt.ebUd.request.getParameter("dmax")) > 0){
+  		  String dfields = "";  		  
+	      for (int d = 1; d <= Integer.parseInt(this.ebEnt.ebUd.request.getParameter("dmax")); d++){
+	    	  if(d == 1){
+	    		  stSql += ", SchDependencies=";
+	    	  }else if(!this.ebEnt.ebUd.request.getParameter("did_"+d).equals("")){
+	    		  dfields += ",";
+	    	  }
+	    	  
+	    	  if(this.ebEnt.ebUd.request.getParameter("did_"+d) != null && !this.ebEnt.ebUd.request.getParameter("did_"+d).equals("") && !this.ebEnt.ebUd.request.getParameter("lag_"+d).equals("0") && !this.ebEnt.ebUd.request.getParameter("lag_"+d).equals("")){
+	    		  dfields += this.ebEnt.ebUd.request.getParameter("did_"+d) + this.ebEnt.ebUd.request.getParameter("type_"+d) + "+" + this.ebEnt.ebUd.request.getParameter("lag_"+d) + "days";
+	    		  linkMap(2, stPk, nmBaseline, stPk, Integer.parseInt(this.ebEnt.ebUd.request.getParameter("did_"+d)), stPk, Integer.parseInt(this.ebEnt.ebUd.request.getParameter("edit")), Double.parseDouble(this.ebEnt.ebUd.request.getParameter("lag_"+d)), this.ebEnt.ebUd.request.getParameter("type_"+d), 0, 0);
+	    		  
+	    		  
+	    	  } else if(this.ebEnt.ebUd.request.getParameter("did_"+d) != null && !this.ebEnt.ebUd.request.getParameter("did_"+d).equals("")){
+	    		  dfields += this.ebEnt.ebUd.request.getParameter("did_"+d) + this.ebEnt.ebUd.request.getParameter("type_"+d);
+	    		  linkMap(2, stPk, nmBaseline, stPk, Integer.parseInt(this.ebEnt.ebUd.request.getParameter("did_"+d)), stPk, Integer.parseInt(this.ebEnt.ebUd.request.getParameter("edit")), 0, this.ebEnt.ebUd.request.getParameter("type_"+d), 0, 0);
+	    	  }
+	      }
+	      stSql += this.ebEnt.dbDyn.fmtDbString(dfields);
       }
   	  
       //calc 1 level below if this level is not 0. order by desc and find first req level that matches
@@ -1461,6 +1603,7 @@ class EpsXlsProject //extends EpsUserData
       this.ebEnt.dbDyn.ExecuteUpdate(stSql);
       
       ResultSet rsNew = this.ebEnt.dbDyn.ExecuteSql(stSqlOld);
+      processScheduleRequirementCost(Integer.parseInt(this.ebEnt.ebUd.request.getParameter("edit")));		//calculate linked requirement costs
       this.epsUd.epsEf.addAuditTrail(rsTable, rsOld, rsNew, this.ebEnt.ebUd.request.getParameter("edit"), stPk, nmBaseline);
     } catch (Exception e)
     {
@@ -1759,7 +1902,8 @@ class EpsXlsProject //extends EpsUserData
                       }
                     }
                   }
-                  this.ebEnt.dbDyn.ExecuteUpdate("update Schedule set SchDependencies = "
+                  //update task dependency field and remove any fixed dates
+                  this.ebEnt.dbDyn.ExecuteUpdate("update Schedule set SchFixedFinishDate = null, SchFixedStartDate = null, SchDependencies = "
                     + this.ebEnt.dbDyn.fmtDbString(stDep)
                     + " where nmProjectId=" + this.ebEnt.ebUd.request.getParameter("pk")
                     + " and nmBaseline=" + nmBaseline + " and RecId=" + this.ebEnt.ebUd.request.getParameter("r"));
@@ -1822,6 +1966,8 @@ class EpsXlsProject //extends EpsUserData
           }
           if (giSubmitId >= 9980 && giSubmitId < 9999)
             return this.editMake(stChild, stPk);
+          
+          processScheduleRequirementCost(Integer.parseInt(this.ebEnt.ebUd.request.getParameter("r")));		//calculate requirement costs linked to this task
         }
         if (giSubmitId == 0 || giSubmitId == 9999 || stCancel != null)
         {
@@ -2175,9 +2321,9 @@ class EpsXlsProject //extends EpsUserData
         for (int iR = 1; iR <= iSch; iR++)
         {
           rs1.absolute(iR);
-          if (iLastLevel == rs1.getInt("Schlevel")) // same level as before, therefore we are LAST
+          if (iLastLevel == rs1.getInt("Schlevel")){ // same level as before, therefore we are LAST
             SchFlags = 0x10;
-          else if (iLastLevel > rs1.getInt("Schlevel"))
+          } else if (iLastLevel > rs1.getInt("Schlevel"))
             SchFlags = 0;
           else if (iLastLevel < rs1.getInt("Schlevel"))
             SchFlags = 0x10;
@@ -2225,6 +2371,38 @@ class EpsXlsProject //extends EpsUserData
       // 4) Process Low-leves, Rollups, check LC
       // in Sch -> must get from Schecule
       this.ebEnt.dbDyn.ExecuteUpdate("update Projects set nmSch=" + iSch + " where RecId=" + stPk);
+      sbReturn.append(this.getElapsed());
+      
+      int effortFlag = 0;
+      //analyze low level hours
+      stSql = "SELECT * FROM Schedule where nmProjectId=" + stPk + " and nmBaseline=" + nmBaseline + " order by SchId desc";
+      ResultSet rs1 = this.ebEnt.dbDyn.ExecuteSql(stSql);
+      rs1.last();
+      iSch = rs1.getRow();
+      int iLastLevel = -1;
+      stRecIdList = "";
+
+      for (int iR = 1; iR <= iSch; iR++)
+      {
+        rs1.absolute(iR);
+        if (iLastLevel == rs1.getInt("Schlevel") && rs1.getInt("SchEstimatedEffort") > 40){ // same level as before, therefore we are LAST
+          effortFlag++;
+          this.ebEnt.dbDyn.ExecuteUpdate("UPDATE Schedule SET nmEffort40Flag=1 WHERE nmProjectId=" + stPk + " and nmBaseline=" + nmBaseline + " and RecID="+rs1.getInt("RecId"));
+        }else{
+        	this.ebEnt.dbDyn.ExecuteUpdate("UPDATE Schedule SET nmEffort40Flag=0 WHERE nmProjectId=" + stPk + " and nmBaseline=" + nmBaseline + " and RecID="+rs1.getInt("RecId"));
+        }
+        iLastLevel = rs1.getInt("Schlevel");
+      }
+	  sbReturn.append("<tr>");
+      sbReturn.append("<td align=right>" + stPk + "</td>");
+      sbReturn.append("<td>Schedules</td>");
+      sbReturn.append("<td>Effort</td>");
+
+      if(effortFlag > 0){
+    	  sbReturn.append("<td style='color:red;'>Low Level Tasks Exceeding 40 Hours</td><td valign=top align=right>" + effortFlag + "</td><td style='color:red;'>fail</td>");
+      }else{
+    	  sbReturn.append("<td>Complete</td><td>"+iSch+"</td><td style='color:green;'>ok</td>");
+      }
       sbReturn.append(this.getElapsed());
     } catch (Exception e)
     {
@@ -2985,6 +3163,8 @@ class EpsXlsProject //extends EpsUserData
           + " where l.nmProjectId=p.RecId and l.nmBaseline=p.CurrentBaseline and l.nmLinkFlags=1"
           + " and l.nmProjectId=" + stPk + " and l.nmFromId=" + stFrom + " and l.nmToId=" + stTo);
         analyzeLink();
+        //calculate the requirement cost
+        this.processRequirementCost(Integer.parseInt(stFrom));
       }
       String s1 = "</form><form method=post name='form" + stChild + "' id='form" + stChild + "' onsubmit='return myValidation(this)'>"
         + "<input type=hidden name=from value='" + iFrom + "'><table><tr><td align=center><h2>"
@@ -4355,7 +4535,7 @@ class EpsXlsProject //extends EpsUserData
   }
   
   /*
-   * Calculate specific requirement's cost for the current project
+   * Calculate specific requirement's cost for the current requirement
    */
   private void processRequirementCost(int reqID) throws SQLException{
 	  //get requirements we need to calculate
@@ -4363,14 +4543,170 @@ class EpsXlsProject //extends EpsUserData
       DecimalFormat df = new DecimalFormat("#########0.00");
       
       //calculate sum of tasks for each requirement cost
-      ResultSet stResult = this.ebEnt.dbDyn.ExecuteSql("select l.nmPercent, l.nmRemainder, l.nmToId, r.ReqCost from teb_link l left join requirements r on l.nmFromId=r.RecId and l.nmProjectId=r.nmProjectId and l.nmBaseline=r.nmBaseline where l.nmProjectId=" + stPk + " and l.nmBaseline=" + this.nmBaseline + " and nmFromId=" + reqID);
+      ResultSet stResult = this.ebEnt.dbDyn.ExecuteSql("select l.nmPercent, l.nmRemainder, l.nmToId, r.ReqCost from teb_link l left join requirements r on l.nmFromId=r.RecId and l.nmProjectId=r.nmProjectId and l.nmBaseline=r.nmBaseline where l.nmLinkFlags=1 and l.nmProjectId=" + stPk + " and l.nmBaseline=" + this.nmBaseline + " and nmFromId=" + reqID);
       
       while(stResult.next()){
     	  if(stResult.getString("l.nmRemainder").equals("1"))
     		  rCost += Double.parseDouble(this.ebEnt.dbDyn.ExecuteSql1("select SchCost from schedule where nmProjectId=" + stPk + " and nmBaseline=" + this.nmBaseline + " and RecId=" + stResult.getString("l.nmToId")));
     	  else
-    		  rCost += Double.parseDouble(this.ebEnt.dbDyn.ExecuteSql1("select SchCost from schedule where nmProjectId=" + stPk + " and nmBaseline=" + this.nmBaseline + " and RecId=" + stResult.getString("l.nmToId"))) + (Double.parseDouble(stResult.getString("l.nmPercent"))*0.1);
+    		  rCost += Double.parseDouble(this.ebEnt.dbDyn.ExecuteSql1("select SchCost from schedule where nmProjectId=" + stPk + " and nmBaseline=" + this.nmBaseline + " and RecId=" + stResult.getString("l.nmToId"))) * (Double.parseDouble(stResult.getString("l.nmPercent"))*0.01);
       }
 	  this.ebEnt.dbDyn.ExecuteUpdate("update requirements set ReqCost='" + df.format(rCost) + "' where nmProjectId=" + stPk + " and RecId=" + reqID + " and nmBaseline=" + this.nmBaseline);
+  }
+  
+  /*
+   * Calculate requirement cost for all requirements linked to this schedule
+   */
+  private void processScheduleRequirementCost(int scheduleID) throws SQLException{
+	  //get requirements we need to calculate
+      Double rCost = 0.00;
+      DecimalFormat df = new DecimalFormat("#########0.00");
+      String[] reqIDs = null;
+      int iCount = 0;
+      
+      //get all requirements that are linked to this schedule
+      ResultSet stResult = this.ebEnt.dbDyn.ExecuteSql("select nmFromId from teb_link where nmLinkFlags=1 and nmProjectId=" + stPk + " and nmBaseline=" + this.nmBaseline + " and nmToId=" + scheduleID);
+      stResult.last();
+      if(stResult.getRow() > 0)
+    	  reqIDs = new String[stResult.getRow()];
+      stResult.beforeFirst();
+      
+      //build requirements string
+      while(stResult.next()){
+    	  reqIDs[iCount] = stResult.getString("nmFromId");
+    	  iCount++;
+      }
+      
+      //calculate requirement costs
+      if(iCount > 0){
+    	  for(int i=0; i<iCount; i++){
+    		  rCost = 0.00;
+	    	  stResult = this.ebEnt.dbDyn.ExecuteSql("select l.nmPercent, l.nmRemainder, l.nmToId, r.ReqCost from teb_link l left join requirements r on l.nmFromId=r.RecId and l.nmProjectId=r.nmProjectId and l.nmBaseline=r.nmBaseline where l.nmLinkFlags=1 and l.nmProjectId=" + stPk + " and l.nmBaseline=" + this.nmBaseline + " and nmFromId=" + reqIDs[i]);
+	          
+	          while(stResult.next()){
+	        	  if(stResult.getString("l.nmRemainder").equals("1"))
+	        		  rCost += Double.parseDouble(this.ebEnt.dbDyn.ExecuteSql1("select SchCost from schedule where nmProjectId=" + stPk + " and nmBaseline=" + this.nmBaseline + " and RecId=" + stResult.getString("l.nmToId")));
+	        	  else
+	        		  rCost += Double.parseDouble(this.ebEnt.dbDyn.ExecuteSql1("select SchCost from schedule where nmProjectId=" + stPk + " and nmBaseline=" + this.nmBaseline + " and RecId=" + stResult.getString("l.nmToId"))) * (Double.parseDouble(stResult.getString("l.nmPercent"))*0.01);
+	          }
+	    	  this.ebEnt.dbDyn.ExecuteUpdate("update requirements set ReqCost='" + df.format(rCost) + "' where nmProjectId=" + stPk + " and RecId=" + reqIDs[i] + " and nmBaseline=" + this.nmBaseline);
+    	  }
+      }
+  }
+  
+  /*
+   * Calculate requirement costs for the current project
+   */
+  public void processAllRequirementCost(){
+	  try{
+		  ResultSet stResult = this.ebEnt.dbDyn.ExecuteSql("select nmProjectId, nmBaseline, RecId from requirements");
+		  while(stResult.next()){
+			  String reqID = stResult.getString("RecId");
+			  String projID = stResult.getString("nmProjectId");
+			  String bsline = stResult.getString("nmBaseline");
+		      Double rCost = 0.00;
+		      DecimalFormat df = new DecimalFormat("#########0.00");
+		      
+		      //calculate sum of tasks for each requirement cost
+		      ResultSet rResult = this.ebEnt.dbDyn.ExecuteSql("select l.nmPercent, l.nmRemainder, l.nmToId, r.ReqCost from teb_link l left join requirements r on l.nmFromId=r.RecId and l.nmProjectId=r.nmProjectId and l.nmBaseline=r.nmBaseline where l.nmLinkFlags=1 and l.nmProjectId=" + projID + " and l.nmBaseline=" + bsline + " and nmFromId=" + reqID);
+		      
+		      while(rResult.next()){
+		    	  if(rResult.getString("l.nmRemainder").equals("1"))
+		    		  rCost += Double.parseDouble(this.ebEnt.dbDyn.ExecuteSql1("select SchCost from schedule where nmProjectId=" + projID + " and nmBaseline=" + bsline + " and RecId=" + rResult.getString("l.nmToId")));
+		    	  else
+		    		  rCost += Double.parseDouble(this.ebEnt.dbDyn.ExecuteSql1("select SchCost from schedule where nmProjectId=" + projID + " and nmBaseline=" + bsline + " and RecId=" + rResult.getString("l.nmToId"))) * (Double.parseDouble(rResult.getString("l.nmPercent"))*0.01);
+		      }
+			  this.ebEnt.dbDyn.ExecuteUpdate("update requirements set ReqCost='" + df.format(rCost) + "' where nmProjectId=" + projID + " and RecId=" + reqID + " and nmBaseline=" + bsline);  
+		  }
+	  } catch (Exception e)
+	  {
+	      stError += "ERROR makeListValue: " + e;
+	  }
+  }
+  
+  private String makeDependenciesTB(ResultSet rs, String stChild){
+	  //display dependencies table
+	  String stFromProject = "";
+	  String stFromId = "";
+	  String stLag = "";
+	  String stType = "";
+	  String stFromBaseline = "";
+	  int iRecMax = 0;
+	  String stPrj = "";
+	  String stTsk = "";
+	  String newtxt = "";
+	  String stReturn = "";
+	  
+	  try{
+		  if (this.stPk != null && this.stPk.length() > 0 && stChild != null && stChild.length() > 0)
+		  {
+		    stPrj = this.stPk;
+		    stChild = "21";
+		    stTsk = rs.getInt("RecId")+"";
+		  } else
+		  {
+		    stPrj = this.ebEnt.ebUd.request.getParameter("pk");
+		    stChild = this.ebEnt.ebUd.request.getParameter("child");
+		    stTsk = rs.getInt("RecId")+"";
+		  }
+		  String stBaseline = this.ebEnt.dbDyn.ExecuteSql1("select CurrentBaseline from Projects where RecId=" + stPrj);
+		  String stSql = "select * from teb_link where nmProjectId=" + stPrj + " and nmBaseline=" + stBaseline + " and nmLinkFlags=2 "
+		    + "and nmToId=" + stTsk + " and nmToProject=nmProjectId order by nmFromId";
+		  ResultSet res = this.ebEnt.dbDyn.ExecuteSql(stSql);
+		  res.last();
+		  iRecMax = res.getRow();
+		
+		 
+		  stReturn += "<br><table bgcolor='blue' cellpadding='1'><tr class=d1>";
+	      //stReturn += "<td>Action</td><td>Project</td><td>Task ID</td><td>Dependency</td><td>Lag [optional]</td></tr>";
+	      stReturn += "<td>Task ID</td><td>Dependency</td><td>Lag [optional]</td></tr>";
+	      //ResultSet rsPrj = this.ebEnt.dbDyn.ExecuteSql("select * from Projects order by ProjectName ");
+	      //rsPrj.last();
+	      //int iMaxPrj = rsPrj.getRow();
+	
+	      for (int k = 1; k <= (iRecMax + 1); k++)
+	      {
+	        stReturn += "<tr class=d0>";
+	        if (k < (iRecMax + 1))
+	        {
+	          res.absolute(k);
+	          stFromProject = res.getString("nmFromProject");
+	          stFromId = res.getString("nmFromId");
+	          stLag = res.getString("nmPercent");
+	          stType = res.getString("stComment");
+	          //stReturn += "<td valign=top align=center>";
+	          //stReturn += "<input type=image name=del id=del value=" + k + " onClick=\"return setSubmitId2(9991," + k + ");\" src='./common/b_drop.png'></td>";
+	        } else
+	        {
+	          stFromProject = stPrj;
+	          stFromId = "";
+	          stLag = "";
+	          stType = "fs";
+	          //stReturn += "<td>Add new:</td>";
+	          newtxt = "Add:<br>";
+	        }
+	        
+	        //stReturn += "<td><select name=prj_" + k + " id=prj_" + k + ">";
+	        
+	
+	        /*for (int iLc = 1; iLc <= iMaxPrj; iLc++)
+	        {
+	          rsPrj.absolute(iLc);
+	          stReturn += this.ebEnt.ebUd.addOption2(rsPrj.getString("ProjectName"), rsPrj.getString("RecId"), stFromProject);
+	        }*/
+	        stReturn += "<td align=right>"+newtxt+"<input type=text name=did_" + k + " id=did_" + k + " value=\"" + stFromId + "\" size=5 style='text-align:right'></td>";
+	        stReturn += "<td>" + this.epsUd.epsEf.ConstraintList("type_" + k, stType, "") + "</td>";
+	        stReturn += "<td align=right><input type=text name=lag_" + k + " id=lag_" + k + " value=\"" + stLag + "\" size=5 style='text-align:right'> (days)</td>";
+	        stReturn += "</tr>";
+	      }
+	
+	      stReturn += "</table><br>"
+	        + "<input type=hidden name=dmax id=dmax value='" + (iRecMax + 1) + "'>";
+	        //+ "<input type=hidden name=giVar id=giVar value='-1'>";
+	  } catch (Exception e)
+      {
+        stError += "ERROR makeDependencies: " + e;
+      }
+      return stReturn;
   }
 }

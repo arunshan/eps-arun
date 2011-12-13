@@ -4,10 +4,20 @@
  */
 package com.eps.model;
 
+import com.ederbase.model.EbDatabase;
 import com.ederbase.model.EbEnterprise;
 import com.ederbase.model.EbMail;
 import com.ederbase.model.EbStatic;
+
+import it.sauronsoftware.cron4j.Scheduler;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -22,6 +32,63 @@ import javax.servlet.http.HttpServletResponse;
  *
  * @author guest1
  */
+/* AS -- 28Nov2011 -- Issue #  */
+class ExchangeRateTask implements Runnable {
+	public static EbDatabase ebd1 = null;
+	ExchangeRateTask(EbDatabase ebd)
+	{
+		ebd1 = ebd;
+	}
+	public void run() {
+		//System.out.println("Current system time: " + new Date());
+		//System.out.println("Another minute ticked away...");
+		
+		setExchangeRates(ebd1);
+	}
+	
+	 public void setExchangeRates(EbDatabase ebd)
+	  {
+		  String stSql = "select now() as CurrentDateTime";
+		  ResultSet rs = ebd.ExecuteSql(stSql);
+		  String dttime = "";
+		  try {
+			if(rs.next())
+				   dttime = rs.getString(1);
+			String str[] = dttime.split(" ");
+			String str1[] = str[1].split(":");
+			String answer = "";
+			if(str1[0].equals("18") && str1[1].equals("39"))
+			{
+				try {
+					String exquery = "select nmDivision,stCurrency from dbeps01.teb_division";
+					ResultSet rs1 = ebd.ExecuteSql(exquery);
+					while(rs1.next())
+					{
+						String countrycode = rs1.getString(2);
+					URL convert = new URL("http://www.exchangerate-api.com/"+countrycode+"/usd/1?k=eBMtn-V4U6g-fiLRp");
+					BufferedReader in = new BufferedReader(new InputStreamReader(convert.openStream()));
+					answer = in.readLine();
+					String insertsql = "update dbeps01.teb_division set nmExchangeRate="+answer+" where nmDivision="+rs1.getInt(1);
+					ebd.ExecuteUpdate(insertsql);
+					in.close();
+					}
+					}
+					catch (MalformedURLException mue) {
+					System.exit(1);
+					}
+					catch (IOException ioe) {
+					System.exit(1);
+					} 
+				
+			}
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	  }
+
+}
+
 public class EpsUserData
 {
 
@@ -55,6 +122,17 @@ public class EpsUserData
 
   public void processSubmit(HttpServletRequest request, HttpServletResponse response)
   {
+	
+	//Check for exchange rates
+    // Prepares the task.
+	ExchangeRateTask task = new ExchangeRateTask(this.ebEnt.dbEnterprise);
+	// Creates the scheduler.
+	Scheduler scheduler = new Scheduler();
+	// Schedules the task, once every minute.
+	scheduler.schedule("* * * * *", task);
+	// Starts the scheduler.
+	scheduler.start();
+	//Close check for exchange rates  
     String stTemp = "";
     stTemp = this.ebEnt.ebUd.request.getLocalAddr();
     int iRecId = 0; // only local here for dynamic
@@ -829,9 +907,9 @@ public class EpsUserData
         this.ebEnt.dbEnterprise.ExecuteUpdate("delete from X25User where RecId > 1000");
         //this.ebEnt.dbEnterprise.ExecuteUpdate("truncate table X25User");
         //this.ebEnt.dbEnterprise.ExecuteUpdate("replace into X25User (RecId,stEMail,nmPriviledge,stPassword) values(1,'roberteder@myinfo.com',65535,password('test123'))");
-        
         /* Start of change AS -- 26Sept2011 -- Issue#2 */
         /*this.ebEnt.dbEnterprise.ExecuteUpdate("replace into X25User (RecId,stEMail,nmPriviledge,stPassword) values(2,'joeledfleiss@yahoo.com',65535,password('test123'))");
+        this.ebEnt.dbEnterprise.ExecuteUpdate("replace into X25User (RecId,stEMail,nmPriviledge,stPassword) values(3,'jf@eppora.com',65535,password('test123'))");
         this.ebEnt.dbEnterprise.ExecuteUpdate("replace into X25User (RecId,stEMail,nmPriviledge,stPassword) values(3,'jf@eppora.com',65535,password('test123'))");
         this.ebEnt.dbEnterprise.ExecuteUpdate("replace into X25User (RecId,stEMail,nmPriviledge,stPassword) values(5,'eob@eppora.com',65535,password('test123'))");
         this.ebEnt.dbEnterprise.ExecuteUpdate("replace into X25User (RecId,stEMail,nmPriviledge,stPassword) values(6,'ll@eppora.com',65535,password('test123'))");*/
@@ -841,8 +919,6 @@ public class EpsUserData
         this.ebEnt.dbEnterprise.ExecuteUpdate("replace into X25User (RecId,stEMail,nmPriviledge,stPassword) values(5,'eob@eppora.com',65535,password('ABCs1234'))");
         this.ebEnt.dbEnterprise.ExecuteUpdate("replace into X25User (RecId,stEMail,nmPriviledge,stPassword) values(6,'ll@eppora.com',65535,password('ABCs1234'))");
         /* End of change AS -- 26Sept2011 -- Issue#2 */
-        
-        
         this.ebEnt.dbDyn.ExecuteUpdate("truncate table teb_reflaborcategory");
         this.ebEnt.dbDyn.ExecuteUpdate("truncate table teb_refdivision");
         this.ebEnt.dbDyn.ExecuteUpdate("truncate table Users");
@@ -1579,8 +1655,8 @@ public class EpsUserData
       }
 
       stReturn += "<table class=l1tablenarrow>"
-        + "<tr><th class=l1th>Task Description</th><th class=l1th>Details</th><th class=l1th>Opened</th><th class=l1th>Status</th></tr>";
-      ResultSet rs = this.ebEnt.dbEnterprise.ExecuteSql("select t.* from  X25RefTask rt, X25Task t "
+        + "<tr><th class=l1th>Issue Description</th><th class=l1th>Details</th><th class=l1th>Project</th><th class=l1th>Opened</th><th class=l1th>Status</th></tr>";
+      ResultSet rs = this.ebEnt.dbEnterprise.ExecuteSql("select t.*, rt.nmRefId from  X25RefTask rt, X25Task t "
         + "where t.RecId=rt.nmTaskId and rt.nmRefType=42 and t.nmTaskFlag=1 "
         + "and rt.nmRefId=" + this.ebEnt.ebUd.getLoginId() + " "
         + "order by dtAssignStart desc");
@@ -1604,10 +1680,11 @@ public class EpsUserData
             {
               if (rs.getString("stDescription").length() > 200)
               {
-                stReturn += "<a target=_blank href='./?stAction=admin&t=0&do=taskdetail&h=n&list=" + rs.getString("RecId") + "'>Details</a>";
+                stReturn += "<a target=_blank href='./?stAction=admin&t=0&do=taskdetail&h=n&list=" + rs.getString("RecId") + "'>Details</a></td><td class=l1td>";
               } else
               {
-                stReturn += rs.getString("stDescription");
+            	int end = rs.getString("stDescription").indexOf("/td></tr></table>");
+                stReturn += "<td class=l1td>"+rs.getString("stDescription").substring(54, end-1);
               }
             } else
             {
@@ -1680,6 +1757,42 @@ public class EpsUserData
           }
         }
       }
+      
+      //flag low level tasks with 40+ hours to PM, PPM, BA, Sponsor #21
+      String userType = this.ebEnt.dbEnterprise.ExecuteSql1("select nmPriviledge from X25user where RecId=" + this.ebEnt.ebUd.getLoginId());
+      if(userType.equals("32") || userType.equals("64") || userType.equals("128") || userType.equals("65535")){
+	      SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+	      Date aDate = null;
+	      rs = this.ebEnt.dbDyn.ExecuteSql("SELECT * FROM schedule WHERE nmEffort40Flag = 1 AND dtSchLastUpdate IS NOT NULL");
+	      while(rs.next()){
+	    	  aDate = formatter.parse(rs.getString("dtSchLastUpdate"));
+	    	  iCount++;
+	          stReturn += "<tr><td class=l1td>" + rs.getString("SchTitle") + "</td>"
+	          + "<td class=l1td>"
+	          + "Task may not exceed 40 hours"
+	          + "</td><td class=l1td>" + formatter.format(aDate) + "</td></tr>";
+	      }
+      }
+      
+      //show estimated, expended hours and done tasks to pm and ppm
+      //String userType = this.ebEnt.dbEnterprise.ExecuteSql1("select nmPriviledge from X25user where RecId=" + this.ebEnt.ebUd.getLoginId());
+      if(userType.equals("32") || userType.equals("64") || userType.equals("65535")){
+	      SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+	      Date aDate = null;
+	      rs = this.ebEnt.dbDyn.ExecuteSql("SELECT * FROM schedule WHERE SchMessage IS NOT NULL");
+	      while(rs.next()){
+	    	  aDate = formatter.parse(rs.getString("dtSchLastUpdate"));
+	    	  iCount++;
+	          stReturn += "<tr><td class=l1td>" + rs.getString("SchTitle") + "</td>";
+	          stReturn += "<td class=l1td>";
+	          if(rs.getString("SchDone") != null && rs.getString("SchDone").equals("Y"))
+	        	  stReturn += "Status: Done<br>";
+	          stReturn += "Estimated Hours: " + rs.getString("SchEstimatedEffort") + "<br>"
+	          + "Expended Hours: " + rs.getString("SchEfforttoDate")
+	          + "</td><td class=l1td>" + formatter.format(aDate) + "</td></tr>";
+	      }
+      }
+      
       if (iCount == 0)
       {
         stReturn += "<tr><td class=l1td colspan=3>No Messages</td></tr>";
@@ -1865,7 +1978,8 @@ public class EpsUserData
         }
       }
       stReturn = "</center><p align=left></form><form name='form" + rsTable.getString("nmTableId") + "' id='form" + rsTable.getString("nmTableId") + "' onsubmit='return myValidation(this)' method='post' action='#next'>"
-        + "<table align=center valign=top width='100%' border=0>";
+        + "<div id='loadingDiv' style='display:none;z-index:-1;'></div>"
+    	+ "<table align=center valign=top width='100%' border=0 id='fieldtb'>";
       iColumnCount++;
       stReturn += "<tr>";
       if (this.nmTableId == 3) // Login
@@ -2047,7 +2161,11 @@ public class EpsUserData
                 stChildren += ",";
               }
               stChildren += aV[i];
-              stReturn += "<input type=submit name=child" + aV[i] + " value=\"" + rsC.getString("stTableName") + "\" onClick=\"return setSubmitId(9990);\">&nbsp;&nbsp;";
+              
+              if(aV[i].equals("46")){	//analyze project button
+            	  stReturn += "<input type=submit name=child" + aV[i] + " value=\"" + rsC.getString("stTableName") + "\" onClick=\"return setSubmitId4(9990);\">&nbsp;&nbsp;";
+              }else
+            	  stReturn += "<input type=submit name=child" + aV[i] + " value=\"" + rsC.getString("stTableName") + "\" onClick=\"return setSubmitId(9990);\">&nbsp;&nbsp;";
             }
           }
         }
@@ -2068,6 +2186,12 @@ public class EpsUserData
       }
       stReturn += "<input type=hidden name=giSubmitId id=giSubmitId value=\"0\">";
       stReturn += "</td></tr></table>";
+      
+      if (stChild != null && (stChild.equals("21")))
+      {
+        //change remaining cost to starting cost if not started yet #25
+        stReturn += "<script type='text/javascript'>if(isBeforeDate(document.getElementById('f827').value)) document.getElementById('f824').value = document.getElementById('f811').value;</script>";
+      }
     } catch (Exception e)
     {
       this.stError += "<br>ERROR: editTable " + e;
@@ -2871,8 +2995,8 @@ public class EpsUserData
     stReturn += "</center>";
     return stReturn;
   }
-  
- /* Start of change AS -- 4Oct2011 -- Issue#19*/
+
+/* Start of change AS -- 4Oct2011 -- Issue#19*/
   
   public String divisionFilter(ResultSet rsTable, String stFilter)
   {
@@ -3184,7 +3308,6 @@ public class EpsUserData
       /* AS -- 2Oct2011  -- Issue #18*/
       //stReturn += "<input type='checkbox' name='nmType' value='" + iAll + "' " + stChecked + " /> ALL ";
       stReturn += "<input type='checkbox' name='nmType' value='" + iAll + "' " + stChecked + " onclick='checkAll(document.forms[1].nmType, this)'/> ALL ";
-      
     }
     if ((nmType & 1024) != 0)
     {
@@ -3196,7 +3319,6 @@ public class EpsUserData
     /* AS -- 2Oct2011  -- Issue #18*/
     //stReturn += "<input type='checkbox' name='nmType' value='1024' " + stChecked + " /> Administrator ";
     stReturn += "<input type='checkbox' name='nmType' value='1024' " + stChecked + " onclick='checkAll(document.forms[1].nmType, this)'/> Administrator ";
-    
     if ((nmType & 128) != 0)
     {
       stChecked = " checked ";
@@ -3207,6 +3329,7 @@ public class EpsUserData
     /* AS -- 2Oct2011  -- Issue #18*/
     stReturn += "<input type='checkbox' name='nmType' value='128' " + stChecked + " onclick='checkAll(document.forms[1].nmType, this)'/> Business Analyst ";
     //stReturn += "<input type='checkbox' name='nmType' value='128' " + stChecked + " /> Business Analyst ";
+
     if ((nmType & 512) != 0)
     {
       stChecked = " checked ";
@@ -3861,70 +3984,103 @@ public class EpsUserData
     String stReturn = stValue;
     int iDup = 0;
     int iWordCount = 0;
+    
     try
     {
       String stWords = makeWordList(stValue);
       String stId = this.ebEnt.dbDyn.ExecuteSql1("select ReqId from Requirements where nmProjectId=" + stProject + " and nmBaseline=" + nmBaseline + " and RecId=" + stPk);
+      int stLvl = this.ebEnt.dbDyn.ExecuteSql1n("select ReqLevel from Requirements where nmProjectId=" + stProject + " and nmBaseline=" + nmBaseline + " and RecId=" + stPk);
       String[] aWords = null;
+      String stSql = "";
+      int iSch = 0;
+      int err = 0;
+      
+	  //check low level or parent errors
+	  stSql = "SELECT * FROM requirements where nmProjectId=" + stProject + " and nmBaseline=" + nmBaseline + " order by RecId desc";
+      ResultSet rs1 = this.ebEnt.dbDyn.ExecuteSql(stSql);
+      rs1.last();
+      iSch = rs1.getRow();
+      int iLastLevel = -1;
 
-      if (stValue.length() > 0)
+      for (int i = 1; i <= iSch; i++)
       {
-        aWords = stWords.split(",");
-        iWordCount = aWords.length;
-        int iCount = EpsStatic.countIndexOf(stValue, ".");
-        if (iCount > 1)
-        {
-          iD50Flags |= 0x1;
-          this.ebEnt.ebUd.setPopupMessage("[ID:" + stId + "] " + rsF.getString("stLabel") + ": contains " + iCount + " Sentences. ");
+        rs1.absolute(i);
+        if (iLastLevel == rs1.getInt("ReqLevel") && stId.equals(rs1.getString("RecId")) && stValue.equals("")){
+      	  // same level as before, therefore we are LAST
+      	  this.ebEnt.ebUd.setPopupMessage("[ID:" + rs1.getString("RecId") + "] " + rsF.getString("stLabel") + ": Children tasks must have a description specified.");
+      	  err = 1;
+      	  break;
+        }else if(iLastLevel != rs1.getInt("ReqLevel") && !stValue.equals("") && stId.equals(rs1.getString("RecId"))){
+      	  //parent
+      	  this.ebEnt.ebUd.setPopupMessage("[ID:" + rs1.getString("RecId") + "] " + rsF.getString("stLabel") + ": Parent tasks cannot have a description.");
+      	  err = 1;
+      	  break;
         }
-        iCount = EpsStatic.countIndexOf(stValue, ",");
-        if (iCount > 0)
-        {
-          iD50Flags |= 0x2;
-          this.ebEnt.ebUd.setPopupMessage("[ID:" + stId + "] " + rsF.getString("stLabel") + ": contains lists or clauses.");
-        } else
-        {
-          iCount = EpsStatic.countIndexOf(stValue, ":");
-          if (iCount > 0)
-          {
-            iD50Flags |= 0x4;
-            this.ebEnt.ebUd.setPopupMessage("[ID:" + stId + "] " + rsF.getString("stLabel") + ": contains clauses.");
-          }
-        }
-      } else
-        iWordCount = 0;
-      if (iWordCount < this.rsMyDiv.getInt("ReqtsSpecificationMinimumWords"))
-      {
-        iD50Flags |= 0x8;
-        this.ebEnt.ebUd.setPopupMessage(rsF.getString("stLabel") + ": contains " + iWordCount + " words. "
-          + " Minumum words required: " + this.rsMyDiv.getInt("ReqtsSpecificationMinimumWords"));
+        iLastLevel = rs1.getInt("ReqLevel");
       }
-      if (iWordCount > this.rsMyDiv.getInt("ReqtsSpecificationMaximumWords"))
-      {
-        iD50Flags |= 0x10;
-        this.ebEnt.ebUd.setPopupMessage("[ID:" + stId + "] " + rsF.getString("stLabel") + ": contains too many (" + iWordCount + ") words. "
-          + " Maximum words: " + this.rsMyDiv.getInt("ReqtsSpecificationMaximumWords"));
-      }
-      if (iWordCount > 0 && stWords.trim().length() > 0 )
-      {
-        ResultSet rsType = this.ebEnt.dbDyn.ExecuteSql("SELECT count(*) cnt,stKeywordType FROM teb_dictionary where stKeyword in "
-          + "(" + stWords + ") group by stKeywordType");
-        rsType.last();
-        int iMaxW = rsType.getRow();
-        for (int iW = 1; iW <= iMaxW; iW++)
-        {
-          rsType.absolute(iW);
-          if (rsType.getString("stKeywordType").equals("A"))
-          {
-            iD50Flags |= 0x20;
-            this.ebEnt.ebUd.setPopupMessage("[ID:" + stId + "] " + rsF.getString("stLabel") + ": contains " + rsType.getString("cnt") + " adjectives/adverbs ");
-          }
-          if (rsType.getString("stKeywordType").equals("C"))
-          {
-            iD50Flags |= 0x40;
-            this.ebEnt.ebUd.setPopupMessage("[ID:" + stId + "] " + rsF.getString("stLabel") + ": contains " + rsType.getString("cnt") + " conjunctions ");
-          }
-        }
+      
+      
+      if(err <= 0){
+	      if (stValue.length() > 0)
+	      {
+	        aWords = stWords.split(",");
+	        iWordCount = aWords.length;
+	        int iCount = EpsStatic.countIndexOf(stValue, ".");
+	        if (iCount > 1)
+	        {
+	          iD50Flags |= 0x1;
+	          this.ebEnt.ebUd.setPopupMessage("[ID:" + stId + "] " + rsF.getString("stLabel") + ": contains " + iCount + " Sentences. ");
+	        }
+	        iCount = EpsStatic.countIndexOf(stValue, ",");
+	        if (iCount > 0)
+	        {
+	          iD50Flags |= 0x2;
+	          this.ebEnt.ebUd.setPopupMessage("[ID:" + stId + "] " + rsF.getString("stLabel") + ": contains lists or clauses.");
+	        } else
+	        {
+	          iCount = EpsStatic.countIndexOf(stValue, ":");
+	          if (iCount > 0)
+	          {
+	            iD50Flags |= 0x4;
+	            this.ebEnt.ebUd.setPopupMessage("[ID:" + stId + "] " + rsF.getString("stLabel") + ": contains clauses.");
+	          }
+	        }
+	      } else
+	        iWordCount = 0;
+	      if (iWordCount < this.rsMyDiv.getInt("ReqtsSpecificationMinimumWords") && stLvl > 1)
+	      {
+	        iD50Flags |= 0x8;
+	        this.ebEnt.ebUd.setPopupMessage(rsF.getString("stLabel") + ": contains " + iWordCount + " words. "
+	          + " Minumum words required: " + this.rsMyDiv.getInt("ReqtsSpecificationMinimumWords"));
+	      }
+	      if (iWordCount > this.rsMyDiv.getInt("ReqtsSpecificationMaximumWords"))
+	      {
+	        iD50Flags |= 0x10;
+	        this.ebEnt.ebUd.setPopupMessage("[ID:" + stId + "] " + rsF.getString("stLabel") + ": contains too many (" + iWordCount + ") words. "
+	          + " Maximum words: " + this.rsMyDiv.getInt("ReqtsSpecificationMaximumWords"));
+	      }
+	      if (iWordCount > 0 && stWords.trim().length() > 0 )
+	      {
+	        ResultSet rsType = this.ebEnt.dbDyn.ExecuteSql("SELECT count(*) cnt,stKeywordType, stKeyword FROM teb_dictionary where stKeyword in "
+	          + "(" + stWords + ") group by stKeywordType");
+	        rsType.last();
+	        int iMaxW = rsType.getRow();
+	        for (int iW = 1; iW <= iMaxW; iW++)
+	        {
+	          rsType.absolute(iW);
+	          if (rsType.getString("stKeywordType").equals("A"))
+	          {
+	            iD50Flags |= 0x20;
+	            this.ebEnt.ebUd.setPopupMessage("[ID:" + stId + "] " + rsF.getString("stLabel") + ": contains " + rsType.getString("cnt") + " adjectives/adverbs ");
+	          }
+	          if (rsType.getString("stKeywordType").equals("C"))
+	          {
+	            iD50Flags |= 0x40;
+	            this.ebEnt.ebUd.setPopupMessage("[ID:" + stId + "] " + rsF.getString("stLabel") + ": contains conjunctions ");
+	            //this.ebEnt.ebUd.setPopupMessage("[ID:" + stId + "] " + rsF.getString("stLabel") + ": contains " + rsType.getString("cnt") + " conjunctions ");
+	          }
+	        }
+	      }
       }
     } catch (Exception e)
     {
@@ -4001,12 +4157,13 @@ public class EpsUserData
         case 27: // Criteria
           stSql += " and nmDivision = 1"; // only count once.
       }
-      iDup = this.ebEnt.dbDyn.ExecuteSql1n(stSql);
+      /*iDup = this.ebEnt.dbDyn.ExecuteSql1n(stSql);
       if (iDup > 0)
       {
         stReturn += " - Copy" + stPk;
         this.ebEnt.ebUd.setPopupMessage("Duplicate entry for field: " + rsF.getString("stLabel") + " avoided by adding: - Copy" + stPk);
       }
+      */
     } catch (Exception e)
     {
       stError += "<BR>ERROR validateD22: " + e;
@@ -4112,7 +4269,32 @@ public class EpsUserData
     }
     return stPopupError.trim();
   }
-
+  
+  /*
+   * Flag low level efforts that exceed 40 hours
+   */
+  public String validateEffort(ResultSet rsF, String stPk, String stValue, String stProject, int nmBaseline)
+  {
+    String stReturn = stValue;
+    Double newEffort = Double.parseDouble(stValue);
+    int lowlvl = 0;
+    String stId = "";
+    try
+    {
+      stId = this.ebEnt.dbDyn.ExecuteSql1("select RecId from Schedule where nmProjectId=" + stProject + " and nmBaseline=" + nmBaseline + " and RecId=" + stPk);
+	  lowlvl = this.ebEnt.dbDyn.ExecuteSql1n("SELECT count(*) FROM Schedule s, Projects p where s.nmProjectId=p.RecId and s.nmBaseline=p.CurrentBaseline and (SchFlags & 0x10 ) != 0 and s.nmProjectId=" + stProject + " and s.RecId=" + stPk);
+	  
+	  if(lowlvl > 0 && newEffort > 40.00)
+      {
+		 this.ebEnt.ebUd.setPopupMessage("[ID:" + stId + "] Effort may not exceed 40 hours");
+      }
+    } catch (Exception e)
+    {
+      stError += "<BR>ERROR validateEffort: " + e;
+    }
+    return stReturn;
+  }
+  
   public int getPriviledge(String stPrivs)
   {
     int nmPriviledge = 0;
@@ -4834,6 +5016,7 @@ public class EpsUserData
           nmBaseline = this.ebEnt.dbDyn.ExecuteSql1n("select CurrentBaseline from Projects where RecId=" + stProject);
           break;
       }
+      
       for (int iF = 1; iF <= iMaxF; iF++)
       {
         rsF.absolute(iF);
@@ -4926,16 +5109,25 @@ public class EpsUserData
             stValue = this.ebEnt.ebUd.fmtDateToDb(stValue);
           }
           
-          ////
-          if(rsF.getString("stDbFieldName").equals("SchFixedStartDate")){	//set start date
-        	  stSql += "SchStartDate=" + this.ebEnt.dbDyn.fmtDbString(stValue);
-          }else if(rsF.getString("stDbFieldName").equals("SchFixedFinishDate")){	//set finish date
-        	  stSql += "SchFinishDate=" + this.ebEnt.dbDyn.fmtDbString(stValue);
+          if(rsF.getString("stDbFieldName").equals("SchFixedFinishDate") || rsF.getString("stDbFieldName").equals("SchFixedStartDate")){
+        	  //delete all dependencies if we set fixed date
+          	  String bline = this.ebEnt.dbDyn.ExecuteSql1("select CurrentBaseline from Projects where RecId=" + this.ebEnt.ebUd.request.getParameter("pk"));
+          	  String sql = "delete from teb_link where nmProjectId=" + this.ebEnt.ebUd.request.getParameter("pk") + " and nmBaseline=" + bline + " and nmLinkFlags=2 "
+          	    + "and nmToId=" + stPk + " and nmToProject=nmProjectId order by nmFromId";
+          	  this.ebEnt.dbDyn.ExecuteUpdate(sql);
+	          sql = "update schedule set SchDependencies='' where nmProjectId=" + this.ebEnt.ebUd.request.getParameter("pk") + " and nmBaseline=" + bline
+	      	    + " and RecId=" + stPk;
+	          this.ebEnt.dbDyn.ExecuteUpdate(sql);
+          	  stSql += rsF.getString("stDbFieldName") + "=" + this.ebEnt.dbDyn.fmtDbString(stValue);
+    		  
+          }else if(rsF.getString("stDbFieldName").equals("SchLaborCategories")){
+        	  String bline = this.ebEnt.dbDyn.ExecuteSql1("select CurrentBaseline from Projects where RecId=" + this.ebEnt.ebUd.request.getParameter("pk"));          	  
+          	  stSql += rsF.getString("stDbFieldName") + "=" + this.ebEnt.dbDyn.fmtDbString(this.ebEnt.dbDyn.ExecuteSql1("SELECT SchLaborCategories From schedule WHERE nmProjectId=" + this.ebEnt.ebUd.request.getParameter("pk") + " and nmBaseline=" + bline + " and RecId=" + stPk));
           }else{
         	  stSql += rsF.getString("stDbFieldName") + "=" + this.ebEnt.dbDyn.fmtDbString(stValue);
           }
         }
-        
+
         switch (rsF.getInt("nmDataType"))
         {
           case 40:
@@ -4967,6 +5159,7 @@ public class EpsUserData
             break;
         }
       }
+      
       if (iCount > 0)
       {
         if (iPk > 0)

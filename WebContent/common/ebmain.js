@@ -7,6 +7,7 @@ var giFieldMax = -1;
 var NS4 = (navigator.appName == "Netscape" && parseInt(navigator.appVersion) < 5);
 var gstD22 = "";
 var dateFormat = 0; // US: dd/mm/yyyy
+var dependencyCount = 0;
 
 window.onbeforeunload = confirmExit;
 function confirmExit()
@@ -246,7 +247,6 @@ function specialDay1( stDay )
   window.close();
 }
 /* End of Issue AS -- 12Oct2011 -- Issue # 41 */
-
 
 function getTextValue( stField )
 {
@@ -1001,6 +1001,15 @@ function myValidation(form1)
       }
     }
   }
+  
+  
+  //task level x can only be in range of 0-x+1
+  if (giSubmitId == 9970 && (form1.f271.value > (parseInt(form1.stLvl.value))+1 || form1.f271.value < 0)){
+	  alert( "\nIllegal Level" );
+	  form1.f271.value = form1.stLvl.value;
+      return false;
+  }
+  
   // packcalendar
   // new Array(201,"Update_17_36","Update",36,1,0,64,"packcalendar","" ),
   for( iField=0; iField < giNrValidation2 ; iField++ )
@@ -1375,6 +1384,27 @@ function setSubmitId3( iId, iForm )
   if (   oValue != null )
     oValue.value = "" + iId;
   eval("document.form"+iForm+".submit();");
+}
+
+/*
+ * Bring up progress while user waits
+ */
+function setSubmitId4( iId )
+{
+  //reveal loading screen
+  document.getElementById("loadingDiv").style.display = "block";
+  document.getElementById("loadingDiv").innerHTML = "Analysis in Process";
+  document.getElementById("loadingDiv").style.position = "absolute";
+  document.getElementById("loadingDiv").style.zIndex = "10";
+  document.getElementById("loadingDiv").style.width = "100%";
+  //hide fields
+  document.getElementById("fieldtb").style.visibility = 'hidden';
+  //proceed
+  giSubmitId = iId;
+  var oValue = getObject("giSubmitId");
+  if (   oValue != null )
+    oValue.value = "" + iId;
+  return true;
 }
 
 function setSubmitIdConfirm( iId, stConfirm )
@@ -1835,6 +1865,109 @@ function specialDays(  iField )
     for ( i= 0 ; i < gaFields.length ; i++ )
     {
       stTemp = trim(gaFields[i]);
+     
+      if ( stTemp.length > 0 )
+      {
+        aV = stTemp.split("^");
+        stEdit  += "<td><input DISABLED type=text name=\"field"+i+"_"+iR+"\" id=\"field"+i+"_"+iR+"\" value='' style='width:"+aV[1]+";'>";
+        if(i==3)
+	  	{
+	  	  stEdit += "<input type=image border=0 src='./common/img/cal.gif' alt='Special Day' class=imageStyle"
+	  	  + " onClick='return getPopupValue2("+gaValidation[iField][0]+","+iR+",this.form.f"+gaValidation[iField][0]+",this.form.field0_"+iR+",this.form.field1_"+iR+",this.form.field2_"+iR+",this.form.field3_"+iR+",this.form.field4_"+iR+",this.form.field5_"+iR+",this.form.field6_"+iR+","+giUser+");'>";
+	  	}
+	    if(i==4)
+		{
+		  stEdit += "<input type=image border=0 src='./common/img/cal.gif' alt='Special Day' class=imageStyle"
+		  + " onClick='return getPopupValue3("+gaValidation[iField][0]+","+iR+",this.form.f"+gaValidation[iField][0]+",this.form.field0_"+iR+",this.form.field1_"+iR+",this.form.field2_"+iR+",this.form.field3_"+iR+",this.form.field4_"+iR+",this.form.field5_"+iR+",this.form.field6_"+iR+","+giUser+");'>";
+		}
+        stEdit += "</td>";
+      }
+    	
+     
+    }
+    stEdit += "</tr>";
+  }
+  stEdit += "</table>";
+  SetTextValue( "div"+gaValidation[iField][0], stEdit );
+
+}
+/*function specialDays(  iField )
+{
+  var stEdit = "";
+  var stValues = getTextValue("f"+gaValidation[iField][0] );
+  var i=0;
+  var iR=0;
+  stEdit += "<table border=0 bgcolor='blue' cellpadding=1 cellspacing=1>";
+  // Header
+  var stNew = "";
+  stEdit += "<tr class=d1>";
+
+  var aRecords = stValues.split("|");
+  gaFields = aRecords[0].split("~");
+ 
+  for ( i= 0 ; i < gaFields.length ; i++ )
+  {
+    var stTemp =  trim(gaFields[i]);
+    if ( stTemp.length > 0 )
+    {
+      var aV = stTemp.split("^");
+      stEdit  += "<td>"+aV[0]+"</td>";
+      if ( stNew.length > 0 )
+        stNew += "~";
+      stNew += trim(getTextValue( aV[0] ));
+    }else
+      stNew += "~";
+  }
+  if ( stNew.length > gaFields.length )
+  {
+    alert( stNew.length + " NEW " + stNew );
+    stValues += "\n|" + stNew;
+    aRecords = stValues.split("|");
+  }
+  stEdit += "<td>&nbsp;</th></tr>";
+  var iDo = 1;
+  for ( iR= 1 ; iR < aRecords.length ; iR++ )
+  {
+    var aValues = aRecords[iR].split("~");
+
+    var stDel = getTextValue("f492_del");
+    iDo = 1;
+    if ( stDel != null && stDel.length > 1 )
+    {
+      var aDel = stDel.split("~");
+      for( ii=0 ; ii < aDel.length ; ii++ )
+      {
+        if ( aDel[ii] == aValues[0] )
+        {
+          iDo = 0;
+          break;
+        }
+      }
+    }
+    if ( iDo > 0 )
+    {
+      stEdit += "<tr class=d0>";
+      for ( i= 0 ; i < gaFields.length ; i++ )
+      {
+        stTemp = trim(gaFields[i]);
+        if ( stTemp.length > 0 )
+        {
+          aV = stTemp.split("^");
+          stEdit  += "<td><input DISABLED type=text name=\"field"+i+"_"+iR+"\" id=\"field"+i+"_"+iR+"\" value=\""+aValues[i]+"\" style='width:"+aV[1]+";'></td>";
+        }
+      }   
+      stEdit += "<td><input type=image border=0 src='./common/b_drop.png'"
+      + " onClick=\"return deleteSpecialDay("+iR+","+aValues[0]+");\">"
+      + "</a></td></tr>";
+    }
+  }
+  var iMax2 = iR + 5;
+  for (  ; iR < iMax2 ; iR++ )
+  {
+    stEdit += "<tr class=d0>";
+    for ( i= 0 ; i < gaFields.length ; i++ )
+    {
+      stTemp = trim(gaFields[i]);
       if ( stTemp.length > 0 )
       {
         aV = stTemp.split("^");
@@ -1850,7 +1983,7 @@ function specialDays(  iField )
   stEdit += "</table>";
   SetTextValue( "div"+gaValidation[iField][0], stEdit );
 
-}
+}*/
 
 function deleteSpecialDay( f1, f2 )
 {
@@ -1964,7 +2097,7 @@ function buildText(iReqSched, iRecId, iId, iFlags, iLevel,iNextLevel, iPrevLevel
     text+="<a href='./"+stLink+"&a=insert&what=below&r="+iRecId+"#row"+iId+"'>Insert below</a><br>";
   if ( iReqSched < 3 )
   {
-    if( (iFlags & 0x10) != 0 )
+    //if( (iFlags & 0x10) != 0 )
       text+="<a href='./"+stLink+"&a=map&r="+iRecId+"#row"+iId+"'>Map</a><br>"; // Only Low level
     //if( iFlags == 0 && iNextLevel <=  iLevel )
     //if ( iReqSched == 2 )
@@ -1977,6 +2110,13 @@ function buildText(iReqSched, iRecId, iId, iFlags, iLevel,iNextLevel, iPrevLevel
         text+="<a href='./"+stLink+"&a=promote&what=this&r="+iRecId+"#row"+iId+"' onClick=\"return confirm('Warning – This will make this requirement a child (sub-requirement) of the preceding requirement and all this requirements children will be promoted one level.  Do you wish to promote this requirement and its children?')\">Promote this item only</a><br>";
       text+="<a href='./"+stLink+"&a=promote&what=children&r="+iRecId+"#row"+iId+"' onClick=\"return confirm('Warning – the children of this requirement will be promoted one level.  Do you wish to promote this requirement and its children?')\">Promote with children</a><br>";
     }
+  }
+  var regexS = "[\\?&]child=([^&#]*)";
+  var regex = new RegExp( regexS );
+  var results = regex.exec(stLink);
+  var childVal = results[1];
+  if(childVal == 21){
+	  text+="<a href='./"+stLink+"&a=send&what=this&r="+iRecId+"#row"+iId+"' onClick=\"return confirm('Warning – this task will be removed from this list. The children of this task will be promoted one level after the selected task`s deletion.  Do you still wish to delete this task and send a message to users?')\">Remove and Send Message</a><br>";
   }
   text+="<hr style=\"color: #aaa;background-color: #aaa;height: 5px;\"><a href='./"+stLink+"&a=customize&r="+iRecId+"#row"+iId+"'>Customize</a><br>";
 
@@ -2158,11 +2298,54 @@ function getSelectedValue( stField )
       if (oField.options[i].selected==true)
       {
         stValue =  oField.options[i].value;
-        break
+        break;
       }
     }
   }
   return stValue;
+}
+
+/*
+ * Project: full edit - Set estimated date based on the fixed start date and throws diagnostic for dependencies
+ */
+function setEstFinishDate(estDays, startInput, endInput){
+	var startDate = document.getElementById(startInput).value;
+	var ans = true;
+	if(startDate != ""){
+		
+		if(dependencyCount > 0){
+			ans = confirm("Do you really wish to specify a fixed date.  If so, the dependencies will be removed.");
+		}
+		
+		if(ans){
+			var d = new Date(startDate);
+		    d.setDate(d.getDate()+parseInt(estDays));
+		    if(d.getYear()<1900)
+		    	document.getElementById(endInput).value = (d.getMonth()+1)+"/"+d.getDate()+"/"+(d.getYear()+1900);
+		    else
+		    	document.getElementById(endInput).value = (d.getMonth()+1)+"/"+d.getDate()+"/"+(d.getYear());
+		}else{
+			document.getElementById(startInput).value = "";
+			document.getElementById(endInput).value = "";
+		}
+	}
+}
+
+/*
+ * Checks if current date is before given date
+ */
+function isBeforeDate(theDate){
+	var today = new Date();
+	var compDate = new Date(theDate);
+	
+	if(compDate > today)	//before given date
+		return true;
+	else
+		return false;		//after or on given date
+}
+
+function setDependencyCount(num){
+	dependencyCount = num;
 }
 
 /* Start of Issue AS -- 2Oct2011  -- Issue #18*/

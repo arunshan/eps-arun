@@ -229,12 +229,13 @@ public class EpsEditField
           break;
 
         case 40: // Special Days
-          stEdit += makePopup("select c.RecId, c.stType as stValue1, c.stEvent as stValue2, "
-            + "DATE_FORMAT(c.dtDay, '%m/%d/%Y') as stValue3, ch.stChoiceValue as stValue4 "
-            + "from Calendar c left join teb_choices ch on ch.nmFieldId=" + iF + " and ch.UniqIdChoice=c.nmFlags "
-            + "where dtDay >= now() and  c.nmDivision=1 and c.nmUser =" + this.ebEnt.ebUd.request.getParameter("pk") + " "
-            + " order by dtDay limit 100", 4, rsFields,
-            "~Type^55px~Comment/Request^110px~Date^80px~Status^60px");
+        	 stEdit += makePopup("select c.RecId, c.stType as stValue1, c.stEvent as stValue2, "
+        	            + "DATE_FORMAT(c.dtDay, '%m/%d/%Y') as stValue3, ch.stChoiceValue as stValue4 "
+        	            + "from Calendar c left join teb_choices ch on ch.nmFieldId=" + iF + " and ch.UniqIdChoice=c.nmFlags "
+        	            + "where dtDay >= now() and  c.nmDivision=1 and c.nmUser =" + this.ebEnt.ebUd.request.getParameter("pk") + " "
+        	            + " order by dtDay limit 100", 4, rsFields,
+        	            "~Type^55px~Comment/Request^110px~Start Date^80px~Finish Date^80px~Status^60px");
+            //"~Type^55px~Comment/Request^110px~Date^80px~Status^60px");
           break;
 
         case 39:
@@ -638,6 +639,8 @@ public class EpsEditField
               DecimalFormat df = new DecimalFormat("#0.00");
               stValue = df.format(Double.parseDouble(stValue));
             }
+
+            //stEdit += "<input type=text name='f" + iF + stExtraFieldName + "' id='f" + iF + stExtraFieldName + "' value=\"" + stValue + "\" size=" + nmCols + " maxlength=" + nmMaxBytes + " " + stDisabled2 + stProcess + ">";
             /* AS -- 19Oct2011 -- Issue # 59 */
             //Check for Burden Factor
             if(iF != 877 && iF != 889)
@@ -652,12 +655,27 @@ public class EpsEditField
             {
               stEdit += workDaysHTML(iF, stExtraFieldName, stValue, nmCols, nmMaxBytes, stDisabled2, stProcess);	
             }
+            
+            if((iF+stExtraFieldName).equals("816")){
+            	//get estimated number of days this project is worked on
+            	Double estEffort = Math.ceil(Double.parseDouble(stValue));
+            	int estDays = 0;
+            	if(estEffort.intValue() > 0)
+            		estDays = estEffort.intValue()/8;
+            	
+            	//update estimated finish date
+            	stEdit += "\n<script language='JavaScript'>"
+            		+ "\nvar estDays = '"+estDays+"'"
+                    + "\n</script>";
+            }
             if ((iDt == 20 || iDt == 8) && (iFlags & 1) != 0) // DATE ONLY or DATETIME - only if editable
             {
               stEdit += "\n<script language='JavaScript'>"
                 + "\nnew tcal ({"
                 + "\n	'formname': 'form" + rsFields.getInt("nmTabId") + "',"
-                + "\n 'controlname': 'f" + iF + "'});\n</script>";
+                + "\n 'controlname': 'f" + iF + "',"
+                + "\n 'endDateName': 'f807'});"
+                + "\n</script>";
             }
             if (rsFields.getString("stHandler").contains("selectuser"))
             {
@@ -685,7 +703,6 @@ public class EpsEditField
     return stEdit;
   }
 
-  
   /* AS -- 19Oct2011 -- Issue # 59 */
   public String burdenFactorHTML(int iF,  String stExtraFieldName, String stValue, int nmCols, int nmMaxBytes, String stDisabled2, String stProcess)
   {
@@ -1177,7 +1194,6 @@ public class EpsEditField
       /* AS -- 29Sept2011 -- Issue #76*/
       stEdit += "<td align=center valign=top><b>AVAILABLE</b><br><select MULTIPLE SIZE=" + this.epsClient.epsUd.rsMyDiv.getInt("MaxRecords") + " name='f" + iF + "_list' id='f" + iF + "_list' style='width:300px' "
         + "onDblClick=\"moveOptions(document.form" + rsTable.getInt("nmTableId") + ".f" + iF + "_list, document.form" + rsTable.getInt("nmTableId") + ".f" + iF + "_selected);\">";
-      
       stEdit += stResult;
       String stNext = "";
       if (iMax < this.epsClient.epsUd.rsMyDiv.getInt("MaxRecords"))
@@ -1192,12 +1208,10 @@ public class EpsEditField
       stEdit += "</td><td valign=middle align=center>";
       stEdit += "\n<input type=button onclick=\"moveOptions(document.form" + rsTable.getInt("nmTableId") + ".f" + iF + "_list, document.form" + rsTable.getInt("nmTableId") + ".f" + iF + "_selected);\"  name=f" + iF + "_add  id=n" + iF + "_add  value='&gt;&gt; ADD'><br>&nbsp;<br>"
         + "<input type=button onclick=\"moveOptions(document.form" + rsTable.getInt("nmTableId") + ".f" + iF + "_selected, document.form" + rsTable.getInt("nmTableId") + ".f" + iF + "_list);\"  name=f" + iF + "_remove id=n" + iF + "_remove  value='REMOVE &lt;&lt;'>";
-      
       /* AS -- 29Sept2011 -- Issue #76*/
       //stEdit += "</td><td valign=top align=center><b>SELECTED USERS</b><br>";
       stEdit += "</td><td valign=top align=center><b>SELECTED</b><br>";
       stEdit += "<select MULTIPLE SIZE=" + this.epsClient.epsUd.rsMyDiv.getInt("MaxRecords") + " name='f" + iF + "_selected' id='f" + iF + "_selected' style='width:300px'>";
-      
       String stNames = "";
       for (int i = 0; i < aV.length; i++)
       {
@@ -1212,14 +1226,13 @@ public class EpsEditField
       }
 
       stEdit += "</select><br>";
-      
+
       /* AS -- 29Sept2011 -- Issue #5*/
-      
       //stEdit += "<input type=submit name=userslect0  value='Save selected users'"
       //  + " onClick='sendBack(\"" + stNames + "\", \"" + stList + "\" );'>";
       stEdit += "<input type=submit name=userslect0  value='Save Selected Users'"
     	        + " onClick='sendBack(\"" + stNames + "\", \"" + stList + "\" );'>";
-
+      
       stEdit += "</td></tr></table>";
       if (this.stValidationMultiSel.length() > 0)
         this.stValidationMultiSel += "~";
@@ -1356,6 +1369,7 @@ public class EpsEditField
         if (iMode == 0 || iMode == 2)
         {
           stReturn += "<td colspan=2 align=right>ID</td><td>Dependent Title</td><td>Dependency</td><td>Lag (days)</td></tr>";
+          int dependNum = 0;
           for (int iR = 1; iR < (iRecMax + 1); iR++)
           {
             rs.absolute(iR);
@@ -1391,7 +1405,12 @@ public class EpsEditField
             else
               stReturn += "<td>&nbsp;</td>";
             stReturn += "</tr>";
+            dependNum++;
           }
+          
+          //save number of dependencies
+          stReturn += "<script type='text/javascript'>setDependencyCount("+dependNum+")</script>";
+          
           if (iMode == 0)
             stReturn += "</table></td><td valign=top>&nbsp;<input type=image name=savedata value=9991 onClick=\"return setSubmitId(9991);\" src='./common/b_edit.png'></td></tr></table>";
           else
@@ -1440,8 +1459,8 @@ public class EpsEditField
           stReturn += "</table><br>"
             + "<input type=hidden name=imax id=imax value='" + (iRecMax + 1) + "'>"
             + "<input type=hidden name=giVar id=giVar value='-1'>"
-            + "<input type=submit name=savedata value='Save and Return'  onClick=\"return setSubmitId(9971);\">"
-            + "<input type=submit name=savedata value='Save and Insert New'  onClick=\"return setSubmitId(9991);\">"
+          	+ "<input type=submit name=savedata value='Save and Return'  onClick=\"return setSubmitIdConfirm(9971, 'If you wish to specify a dependency, we will remove the fixed date.  Is this what you want?');\">"
+            + "<input type=submit name=savedata value='Save and Insert New'  onClick=\"return setSubmitIdConfirm(9991, 'If you wish to specify a dependency, we will remove the fixed date.  Is this what you want?');\">"
             + "<input type=submit name=cancel2 value='Cancel'  onClick=\"setSubmitId(8888);\">"
             + "<br>&nbsp;";
         }
@@ -2437,6 +2456,22 @@ public class EpsEditField
       }
       if (iSch > 0)
       {
+    	//if effort was updated, need to recalculate parents
+    	Double effortDiff = Double.parseDouble(rsNew.getString("SchEstimatedEffort")) - Double.parseDouble(rsOld.getString("SchEstimatedEffort"));
+    	ResultSet rs = null;
+    	int currlvl = Integer.parseInt(rsNew.getString("SchLevel"));
+    	
+    	if(Math.abs(effortDiff) > 0.00){
+    		for(int i=currlvl; i>0; i--){
+    			rs = this.ebEnt.dbDyn.ExecuteSql("select * from Schedule where nmProjectId=" + stProject + " and RecId < " + stPk + " and SchLevel < " + i + " order by RecId desc");
+    			if(rs.first()){
+    				rs.absolute(1);
+    				this.ebEnt.dbDyn.ExecuteUpdate("update Schedule set SchEstimatedEffort=SchEstimatedEffort+" + effortDiff
+    						+ " where nmProjectId=" + stProject + " and RecId=" + rs.getString("RecId") + " and nmBaseline=" + nmBaseline);
+    			}
+    		}
+    	}
+    	  
         this.ebEnt.dbDyn.ExecuteUpdate("update Schedule set dtSchLastUpdate=now()"
           + " where nmProjectId=" + stProject + " and RecId=" + stPk + " and nmBaseline=" + nmBaseline);
         recalcSchedule(stPk, stProject, nmBaseline);

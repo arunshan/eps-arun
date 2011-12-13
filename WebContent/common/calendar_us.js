@@ -140,7 +140,7 @@ function f_tcalShow (d_date) {
 function f_tcalHide (n_date) {
 	if (n_date)
 		this.e_input.value = this.f_generDate(new Date(n_date));
-
+		
 	// no action if not visible
 	if (!this.b_visible)
 		return;
@@ -157,6 +157,11 @@ function f_tcalHide (n_date) {
 	this.e_icon.src = this.a_tpl.imgpath + 'cal.gif';
 	this.e_icon.title = 'Open Calendar';
 	this.b_visible = false;
+	
+	//trigger change event
+	if(this.a_cfg.endDateName != undefined && this.a_cfg.controlname != this.a_cfg.endDateName){
+		setEstFinishDate(estDays, this.a_cfg.controlname, this.a_cfg.endDateName);
+	}
 }
 
 function f_tcalToggle () {
